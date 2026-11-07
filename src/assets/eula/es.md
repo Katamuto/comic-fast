@@ -1,4 +1,4 @@
-### Licencia MIT con Protección de Contenido del Usuario
+# Licencia MIT con Protección de Contenido del Usuario
 
 **Copyright (c) 2026 Camilo Sierra (Katamuto the Dog)**
 
@@ -8,15 +8,15 @@ El aviso de copyright anterior y este aviso de permiso se incluirán en todas la
 
 ---
 
-### CLÁUSULAS Y ACLARACIONES RESPECTO AL CONTENIDO Y LAS FUENTES
+## CLÁUSULAS Y ACLARACIONES RESPECTO AL CONTENIDO Y LAS FUENTES
 
-#### 1. Propiedad del contenido creado por el usuario
+### 1. Propiedad del contenido creado por el usuario
 Esta licencia se aplica exclusivamente al código fuente del Software, binarios y diseño de interfaz. Los usuarios conservan todos los derechos de propiedad intelectual y de autor plenos y exclusivos sobre todo el contenido, historias, cómics, ilustraciones, gráficos, textos y archivos exportados creados con Comic Fast. El autor/desarrollador de este Software no reclama ninguna propiedad, derecho ni regalías sobre los proyectos generados por los usuarios.
 
-#### 2. Fuentes y recursos de terceros
+### 2. Fuentes y recursos de terceros
 Comic Fast permite a los usuarios importar fuentes, gráficos y recursos externos. Los usuarios son los únicos responsables de garantizar que disponen de los derechos y licencias adecuados para utilizar y distribuir cualquier recurso de terceros importado o exportado desde el Software. Los desarrolladores de Comic Fast no verifican ni hacen cumplir las licencias de recursos externos.
 
-#### 3. Contribuciones voluntarias
+### 3. Contribuciones voluntarias
 Las donaciones o contribuciones voluntarias realizadas al autor no otorgan ningún derecho especial, permiso o propiedad sobre el Software o su desarrollo futuro.
 
 ---
