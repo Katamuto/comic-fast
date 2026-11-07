@@ -1,0 +1,7 @@
+{
+  "items": {
+    "comic":      { "es": "Cómic (portada y 2 páginas)", "en": "Comic (cover and 2 pages)", "fr": "BD (couverture et 2 pages)", "pt": "Quadrinho (capa e 2 páginas)", "ja": "コミック(表紙と2ページ)", "ko": "만화(표지와 2페이지)", "zh": "漫画(封面和2页)" },
+    "storyboard": { "es": "Storyboard (6 planos por página)", "en": "Storyboard (6 frames per page)", "fr": "Storyboard (6 plans par page)", "pt": "Storyboard (6 quadros por página)", "ja": "ストーリーボード(1ページ6コマ)", "ko": "스토리보드(페이지당 6컷)", "zh": "分镜(每页6格)" },
+    "manhwa":     { "es": "Manhwa / webtoon (tira vertical)", "en": "Manhwa / webtoon (vertical strip)", "fr": "Manhwa / webtoon (bande verticale)", "pt": "Manhwa / webtoon (tira vertical)", "ja": "縦読みマンガ(ウェブトゥーン)", "ko": "웹툰(세로 스크롤)", "zh": "条漫(竖向长条)" }
+  }
+}

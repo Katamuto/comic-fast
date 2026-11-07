@@ -1,0 +1,49 @@
+{
+  "name": {
+    "es": "Siluetas",
+    "en": "Silhouettes",
+    "ja": "シルエット",
+    "ko": "실루엣",
+    "fr": "Silhouettes",
+    "zh": "剪影",
+    "pt": "Silhuetas"
+  },
+  "items": {
+    "rayo": {
+      "es": "Rayo",
+      "en": "Lightning bolt",
+      "ja": "稲妻",
+      "ko": "번개",
+      "fr": "Éclair",
+      "zh": "闪电",
+      "pt": "Raio"
+    },
+    "corazon": {
+      "es": "Corazón",
+      "en": "Heart",
+      "ja": "ハート",
+      "ko": "하트",
+      "fr": "Cœur",
+      "zh": "爱心",
+      "pt": "Coração"
+    },
+    "estrella": {
+      "es": "Estrella",
+      "en": "Star",
+      "ja": "星",
+      "ko": "별",
+      "fr": "Étoile",
+      "zh": "星星",
+      "pt": "Estrela"
+    },
+    "nube": {
+      "es": "Nube",
+      "en": "Cloud",
+      "ja": "雲",
+      "ko": "구름",
+      "fr": "Nuage",
+      "zh": "云朵",
+      "pt": "Nuvem"
+    }
+  }
+}

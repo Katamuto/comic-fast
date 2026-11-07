@@ -1,0 +1,31 @@
+{
+  "name": {
+    "es": "Efectos (VFX)",
+    "en": "Effects (VFX)",
+    "ja": "エフェクト（VFX）",
+    "ko": "효과(VFX)",
+    "fr": "Effets (VFX)",
+    "zh": "特效（VFX）",
+    "pt": "Efeitos (VFX)"
+  },
+  "items": {
+    "burs": {
+      "es": "Explosión",
+      "en": "Explosion",
+      "ja": "爆発",
+      "ko": "폭발",
+      "fr": "Explosion",
+      "zh": "爆炸",
+      "pt": "Explosão"
+    },
+    "salpicadura": {
+      "es": "Salpicadura",
+      "en": "Splash",
+      "ja": "飛沫",
+      "ko": "튀김",
+      "fr": "Éclaboussure",
+      "zh": "飞溅",
+      "pt": "Respingo"
+    }
+  }
+}

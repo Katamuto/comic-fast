@@ -1,0 +1,22 @@
+{
+  "items": {
+    "suave":       { "es": "Suave", "en": "Soft", "fr": "Doux", "pt": "Suave", "ja": "ソフト", "ko": "부드러움", "zh": "柔边" },
+    "tiza":        { "es": "Tiza", "en": "Chalk", "fr": "Craie", "pt": "Giz", "ja": "チョーク", "ko": "분필", "zh": "粉笔" },
+    "carboncillo": { "es": "Carboncillo", "en": "Charcoal", "fr": "Fusain", "pt": "Carvão", "ja": "木炭", "ko": "목탄", "zh": "炭笔" },
+    "aerosol":     { "es": "Aerosol", "en": "Spray", "fr": "Aérosol", "pt": "Spray", "ja": "スプレー", "ko": "스프레이", "zh": "喷雾" },
+    "plano":       { "es": "Plano", "en": "Flat bristle", "fr": "Pinceau plat", "pt": "Pincel chato", "ja": "平筆", "ko": "납작붓", "zh": "平头笔" },
+    "salpicado":   { "es": "Salpicado", "en": "Splatter", "fr": "Éclaboussures", "pt": "Respingo", "ja": "スプラッター", "ko": "튀김", "zh": "飞溅" },
+    "cuadrado":    { "es": "Cuadrado", "en": "Square", "fr": "Carré", "pt": "Quadrado", "ja": "四角", "ko": "사각", "zh": "方形" },
+    "estrella":    { "es": "Estrella", "en": "Star", "fr": "Étoile", "pt": "Estrela", "ja": "星", "ko": "별", "zh": "星形" }
+  },
+  "settings": {
+    "suave":       { "spacing": 0.1 },
+    "tiza":        { "spacing": 0.2, "angleJitter": 1 },
+    "carboncillo": { "spacing": 0.15, "angleJitter": 0.05 },
+    "aerosol":     { "spacing": 0.25, "angleJitter": 1 },
+    "plano":       { "spacing": 0.12 },
+    "salpicado":   { "spacing": 0.6, "angleJitter": 1 },
+    "cuadrado":    { "spacing": 0.1 },
+    "estrella":    { "spacing": 0.5, "angleJitter": 1 }
+  }
+}

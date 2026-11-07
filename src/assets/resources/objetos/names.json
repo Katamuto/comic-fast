@@ -1,0 +1,40 @@
+{
+  "name": {
+    "es": "Objetos",
+    "en": "Objects",
+    "ja": "オブジェクト",
+    "ko": "사물",
+    "fr": "Objets",
+    "zh": "对象",
+    "pt": "Objetos"
+  },
+  "items": {
+    "lineas1": {
+      "es": "Explosión",
+      "en": "Burst",
+      "ja": "バースト",
+      "ko": "터지다",
+      "fr": "Explosion",
+      "zh": "爆裂",
+      "pt": "Explosão"
+    },
+    "lineas2": {
+      "es": "Nube",
+      "en": "Cloud",
+      "ja": "雲",
+      "ko": "구름",
+      "fr": "Nuage",
+      "zh": "云",
+      "pt": "Nuvem"
+    },
+    "lineas3": {
+      "es": "Nubarron",
+      "en": "Dark Cloud",
+      "ja": "雲",
+      "ko": "구름",
+      "fr": "Gros nuage",
+      "zh": "云",
+      "pt": "Nuvem carregada"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+# Cabeceras para Cloudflare Pages (también las entiende Netlify).
+# Los archivos de /assets llevan el hash en el nombre, así que se pueden cachear para siempre.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# El aviso para la versión web debe leerse siempre fresco (ver docs/08-avisos.md).
+/avisos.json
+  Cache-Control: no-cache
+
+# La lista de descargas de escritorio también se lee siempre fresca.
+/descargas/descargas.json
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json

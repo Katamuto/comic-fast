@@ -1,0 +1,112 @@
+{
+  "name": {
+    "es": "Lineas de Acción",
+    "en": "Lines of Action",
+    "ja": "行動方針",
+    "ko": "행동 방향",
+    "fr": "Axes d'action",
+    "zh": "行动路线",
+    "pt": "Linhas de Ação"
+  },
+  "items": {
+    "lineas1": {
+      "es": "Estela",
+      "en": "Stela",
+      "ja": "石碑",
+      "ko": "스텔라",
+      "fr": "Stèle",
+      "zh": "石碑",
+      "pt": "Estela"
+    },
+    "lineas2": {
+      "es": "Estela",
+      "en": "Stela",
+      "ja": "石碑",
+      "ko": "스텔라",
+      "fr": "Stèle",
+      "zh": "石碑",
+      "pt": "Estela"
+    },
+    "lineas3": {
+      "es": "Estela",
+      "en": "Stela",
+      "ja": "石碑",
+      "ko": "스텔라",
+      "fr": "Stèle",
+      "zh": "石碑",
+      "pt": "Estela"
+    },
+    "lineas4": {
+      "es": "Estela",
+      "en": "Stela",
+      "ja": "石碑",
+      "ko": "스텔라",
+      "fr": "Stèle",
+      "zh": "石碑",
+      "pt": "Estela"
+    },
+    "lineas5": {
+      "es": "Impacto",
+      "en": "Impact",
+      "ja": "インパクト",
+      "ko": "영향",
+      "fr": "Impact",
+      "zh": "影响",
+      "pt": "Impacto"
+    },
+    "lineas6": {
+      "es": "Cruceta",
+      "en": "Cross-piece",
+      "ja": "横木",
+      "ko": "가로대",
+      "fr": "Croisillon",
+      "zh": "横梁",
+      "pt": "Cruzeta"
+    },
+    "lineas7": {
+      "es": "Cruceta",
+      "en": "Cross-piece",
+      "ja": "横木",
+      "ko": "가로대",
+      "fr": "Croisillon",
+      "zh": "横梁",
+      "pt": "Cruzeta"
+    },
+    "lineas8": {
+      "es": "Destello",
+      "en": "Flash",
+      "ja": "フラッシュ",
+      "ko": "플래시",
+      "fr": "Éclat",
+      "zh": "闪光",
+      "pt": "Lampejo"
+    },
+    "lineas9": {
+      "es": "Destello",
+      "en": "Flash",
+      "ja": "フラッシュ",
+      "ko": "플래시",
+      "fr": "Éclat",
+      "zh": "闪光",
+      "pt": "Lampejo"
+    },
+    "lineas10": {
+      "es": "Estela",
+      "en": "Stela",
+      "ja": "石碑",
+      "ko": "스텔라",
+      "fr": "Stèle",
+      "zh": "石碑",
+      "pt": "Estela"
+    },
+    "lineas11": {
+      "es": "Destello",
+      "en": "Flash",
+      "ja": "フラッシュ",
+      "ko": "플래시",
+      "fr": "Éclat",
+      "zh": "闪光",
+      "pt": "Lampejo"
+    }
+  }
+}

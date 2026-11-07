@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+*.log
+
+# Tauri / Rust
+src-tauri/target
+src-tauri/gen
+
+# Variables de entorno locales (la plantilla .env.example sí se sube)
+.env
+.env.local
+.env.*.local
+.env.production

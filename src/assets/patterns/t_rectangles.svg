@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="172.64067"
+   height="172.64453"
+   viewBox="0 0 172.64067 172.64453"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="tiles.svg"
+   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.1642403"
+     inkscape:cx="317.37436"
+     inkscape:cy="172.21531"
+     inkscape:window-width="1870"
+     inkscape:window-height="1052"
+     inkscape:window-x="50"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <!-- Ejemplo de textura de imagen tileable: ruido con bordes que encajan (stitchTiles). Bórralo cuando quieras. -->
+  <filter
+     id="p"
+     x="0"
+     y="0"
+     width="1"
+     height="1"
+     color-interpolation-filters="sRGB">
+    <feTurbulence
+       type="fractalNoise"
+       baseFrequency="0.9"
+       numOctaves="3"
+       seed="4"
+       stitchTiles="stitch"
+       id="feTurbulence1" />
+    <feColorMatrix
+       type="matrix"
+       values="0 0 0 0 0.35  0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 1.4 -0.45"
+       id="feColorMatrix1" />
+  </filter>
+  <path
+     id="path229"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 28.775382,86.323229 H 0.00194222 -28.771499 -57.546893 V 115.09668 H -28.771499 0.00194222 28.775382 Z" />
+  <path
+     id="path231"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 57.548813,115.09667 H 28.775382 0.00195222 -28.773439 v 28.77344 H 0.00195222 28.775382 57.548813 Z" />
+  <path
+     id="path233"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 86.322263,143.87011 H 57.548823 28.775392 2.2241211e-6 v 28.77345 H 28.775392 57.548823 86.322263 Z" />
+  <path
+     id="path239"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 143.86722,143.87109 v 28.77344 28.77344 28.77539 h 28.77344 v -28.77539 -28.77344 -28.77344 z" />
+  <path
+     id="path257"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M -1.7758789e-6,-8.0834961e-7 V 28.773439 57.546879 86.322259 H 28.773438 V 57.546879 28.773439 -8.0834961e-7 Z" />
+  <path
+     id="path258"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 115.0957,-8.0834961e-7 H 86.322269 57.548829 28.773438 V 28.773439 h 28.775391 28.77344 28.773431 z" />
+  <path
+     id="path259"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 28.773438,28.774409 v 28.77344 28.77344 28.775391 H 57.546879 V 86.321289 57.547849 28.774409 Z" />
+  <path
+     id="path260"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 143.86916,28.773439 H 115.09571 86.322269 57.546879 v 28.77344 h 28.77539 28.773441 28.77345 z" />
+  <path
+     id="path261"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 57.546879,57.547849 v 28.77344 28.773451 28.77538 h 28.77345 V 115.09474 86.321289 57.547849 Z" />
+  <path
+     id="path262"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 172.6426,57.546879 H 143.86916 115.09572 86.320329 v 28.77344 h 28.775391 28.77344 28.77344 z" />
+  <path
+     id="path263"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 86.320329,86.321289 v 28.773451 28.77344 28.77538 H 115.09377 V 143.86818 115.09474 86.321289 Z" />
+  <path
+     id="path264"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 201.41604,86.321289 h -28.77344 -28.77343 -28.7754 v 28.773451 h 28.7754 28.77343 28.77344 z" />
+  <path
+     id="path265"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 115.09377,115.09571 v 28.77344 28.77344 28.77538 h 28.77345 v -28.77538 -28.77344 -28.77344 z" />
+  <path
+     id="path268"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 115.0957,-57.54785 V -28.774411 -9.7080835e-4 28.774409 h 28.77346 V -9.7080835e-4 -28.774411 -57.54785 Z" />
+  <path
+     id="path270"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="M 143.86916,-28.774411 V -9.7080835e-4 28.772469 57.547849 H 172.6426 V 28.772469 -9.7080835e-4 -28.774411 Z" />
+  <path
+     id="path275"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"
+     d="m 230.18948,115.09668 h -28.77344 -28.77343 -28.77539 v 28.77344 h 28.77539 28.77343 28.77344 z" />
+</svg>

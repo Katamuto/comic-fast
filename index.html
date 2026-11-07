@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Comic Fast — editor de cómics</title>
+    <meta
+      name="description"
+      content="Comic Fast: editor de cómics gratuito y ligero. Compón páginas con viñetas, globos, tramas y texturas, y exporta a PNG, PDF o CBZ. Funciona en el navegador y como app de escritorio."
+    />
+    <meta name="theme-color" content="#25252b" />
+    <meta property="og:title" content="Comic Fast — editor de cómics" />
+    <meta property="og:description" content="Crea cómics de forma rápida e intuitiva, gratis y sin instalar nada." />
+    <meta property="og:type" content="website" />
+    <!-- Para una vista previa con imagen al compartir el enlace, añade aquí og:image con la URL absoluta de tu dominio. -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Web app instalable ("Añadir a pantalla de inicio"): se abre sin barra del navegador. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Comic Fast" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>Comic Fast necesita JavaScript para funcionar.</noscript>
+    <script src="/boot-guard.js"></script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

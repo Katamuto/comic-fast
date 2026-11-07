@@ -1,0 +1,22 @@
+{
+  "name": {
+    "es": "Estallidos",
+    "en": "Outbursts",
+    "ja": "爆発",
+    "ko": "폭발",
+    "fr": "Éclats",
+    "zh": "爆炸",
+    "pt": "Explosões"
+  },
+  "items": {
+    "explosion": {
+      "es": "Impacto 1",
+      "en": "Impact 1",
+      "ja": "インパクト1",
+      "ko": "영향 1",
+      "fr": "Impact 1",
+      "zh": "影响 1",
+      "pt": "Impacto 1"
+    }
+  }
+}
