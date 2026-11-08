@@ -12,7 +12,8 @@
     "test": "vitest run",
     "tauri": "tauri",
     "build:web": "vite build",
-    "icons": "tauri icon src-tauri/icons/icon.png"
+    "icons": "tauri icon src-tauri/icons/icon.png",
+    "build:android": "vite build && npx cap sync android"
   },
   "dependencies": {
     "@fontsource/bangers": "^5.0.0",
