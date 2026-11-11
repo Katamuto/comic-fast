@@ -1,4 +1,8 @@
 import type { TextStyle } from '../model/types';
+import type { RichWrap, Seg } from './richText';
+
+/** Ajuste de línea con formato por partes (ver richText.ts). */
+export type RichFn = (size: number, maxWidth: number | ((lineIndex: number) => number)) => RichWrap;
 
 /** Función que mide el ancho (en px) de una cadena con una fuente CSS dada. */
 export type Measure = (font: string) => (text: string) => number;
@@ -93,6 +97,10 @@ export interface FittedText {
   lineHeight: number;
   /** Por línea: true si cierra un párrafo (solo horizontal). */
   last?: boolean[];
+  /** Texto con formato: palabras de cada línea (posiciones en `text`), anchos reales y segmentos para dibujar. */
+  words?: { from: number; to: number }[][];
+  lineWidths?: number[];
+  segs?: Seg[][];
   /** Por línea: posición y ancho disponibles (globos que siguen su contorno). `y` = arriba de la línea. */
   lineRects?: { x: number; w: number; y: number }[];
   /** El texto no cabe en la caja (solo con tamaño forzado, que no lo reduce). */
@@ -110,15 +118,17 @@ export function fitText(
   measure: Measure,
   lineHeightRatio = 1.2,
   minSize = 8,
-  force = false
+  force = false,
+  rich?: RichFn
 ): FittedText {
   let size = force ? Math.max(1, style.fontSize) : Math.max(minSize, style.fontSize);
   for (;;) {
-    const { lines, last } = wrapParagraphs(text, Math.max(1, box.w), measure(fontCss(style, size)));
+    const wr = rich ? rich(size, Math.max(1, box.w)) : null;
+    const { lines, last } = wr ?? wrapParagraphs(text, Math.max(1, box.w), measure(fontCss(style, size)));
     const lineHeight = size * lineHeightRatio;
     const fits = lines.length * lineHeight <= box.h;
     if (force || fits || size <= minSize) {
-      return { lines, last, fontSize: size, lineHeight, overflow: !fits };
+      return { lines, last, fontSize: size, lineHeight, overflow: !fits, words: wr?.words, lineWidths: wr?.widths };
     }
     size = Math.max(minSize, Math.floor(size * 0.94 * 10) / 10);
   }

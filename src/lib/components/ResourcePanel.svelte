@@ -16,6 +16,7 @@
   import Collapsible from './Collapsible.svelte';
   import Icon from './Icon.svelte';
   import { contextMenu } from '../app/contextMenu.svelte';
+  import { NO_FILTER, filterAssets, isFiltering, type AssetFilter } from '../app/assetFilter';
 
   const TAB_ICONS: Record<string, string> = {
     images: 'image',
@@ -33,7 +34,11 @@
 
   let tabId = $state('images');
   const tab = $derived(TABS.find((x) => x.id === tabId) ?? TABS[0]);
-  const assetList = $derived(Object.values(editor.assets));
+  const allAssets = $derived(Object.values(editor.assets));
+  let filter = $state<AssetFilter>({ ...NO_FILTER });
+  let showFilters = $state(false);
+  const assetList = $derived(filterAssets(allAssets, filter, editor.usedAssets));
+  const filtering = $derived(isFiltering(filter));
 
   const groups = $derived.by(() => {
     const map = new Map<string, ResourceItem[]>();
@@ -174,10 +179,52 @@
     {#if tab.kind === 'assets'}
       <button type="button" class="import" onclick={() => importImages()}>{t('res.import')}</button>
       <button type="button" class="import alt" onclick={() => (imageEditor.showNew = true)}>{t('img.newDrawing')}</button>
-      {#if assetList.length === 0}
+      {#if allAssets.length === 0}
         <p class="hint">
           {t('res.importHint')}
         </p>
+      {:else}
+        <div class="filters">
+          <button type="button" class="ftoggle" class:on={filtering} aria-expanded={showFilters} onclick={() => (showFilters = !showFilters)}>
+            {t('flt.title')}{filtering ? ` (${assetList.length}/${allAssets.length})` : ''}
+          </button>
+          {#if showFilters}
+            <input type="search" class="search" placeholder={t('flt.search')} bind:value={filter.query} />
+            <label>{t('flt.use')}
+              <select bind:value={filter.use}>
+                <option value="all">{t('flt.all')}</option>
+                <option value="used">{t('flt.used')}</option>
+                <option value="unused">{t('flt.unused')}</option>
+              </select>
+            </label>
+            <label>{t('flt.keep')}
+              <select bind:value={filter.keep}>
+                <option value="all">{t('flt.all')}</option>
+                <option value="kept">{t('flt.kept')}</option>
+                <option value="notKept">{t('flt.notKept')}</option>
+              </select>
+            </label>
+            <label>{t('flt.shape')}
+              <select bind:value={filter.shape}>
+                <option value="all">{t('flt.all')}</option>
+                <option value="landscape">{t('flt.landscape')}</option>
+                <option value="portrait">{t('flt.portrait')}</option>
+                <option value="square">{t('flt.square')}</option>
+              </select>
+            </label>
+            <label>{t('flt.sort')}
+              <select bind:value={filter.sort}>
+                <option value="import">{t('flt.sortImport')}</option>
+                <option value="name">{t('flt.sortName')}</option>
+                <option value="size">{t('flt.sortSize')}</option>
+              </select>
+            </label>
+            {#if filtering}
+              <button type="button" onclick={() => (filter = { ...NO_FILTER, sort: filter.sort })}>{t('flt.clear')}</button>
+            {/if}
+          {/if}
+        </div>
+        {#if assetList.length === 0}<p class="hint">{t('flt.none')}</p>{/if}
       {/if}
       <div class="grid">
         {#each assetList as a (a.id)}
@@ -246,6 +293,24 @@
 </aside>
 
 <style>
+  .filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3846rem;
+    margin: 0.4rem 0;
+  }
+  .filters label {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9231rem;
+    color: var(--muted);
+  }
+  .ftoggle.on {
+    font-weight: 600;
+    color: var(--sel);
+  }
   .resources {
     display: flex;
     flex-direction: column;

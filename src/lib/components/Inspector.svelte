@@ -15,6 +15,7 @@
   import LayersPanel from './LayersPanel.svelte';
   import ImageFxEditor from './fields/ImageFxEditor.svelte';
   import { listPatterns, listTextures, usesSeed } from '../render/patterns';
+  import RichBar from './fields/RichBar.svelte';
   import { TAIL_STYLES } from '../render/balloon';
   import { patternName } from '../render/patternNames.svelte';
 
@@ -35,7 +36,22 @@
     else set({ w, h }, field);
   }
 
-  const BALLOON_STYLES = ['speech', 'thought', 'shout', 'whisper', 'caption', 'jagged', 'rounded', 'scallop', 'blob', 'angular', 'impact'] as const;
+  /** Recuerda la selección del cuadro de texto para dar formato a esa parte. */
+  function trackSel(ta: HTMLTextAreaElement, id: string) {
+    editor.textSel = { id, from: ta.selectionStart, to: ta.selectionEnd };
+  }
+  /** Ctrl+B / I / U sobre la selección del cuadro de texto. */
+  function richKey(e: KeyboardEvent) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    const flag = k === 'b' ? 'bold' : k === 'i' ? 'italic' : k === 'u' ? 'underline' : null;
+    if (!flag) return;
+    e.preventDefault();
+    trackSel(e.currentTarget as HTMLTextAreaElement, editor.single?.id ?? '');
+    editor.formatText({ toggle: flag });
+  }
+
+  const BALLOON_STYLES = ['speech', 'thought', 'shout', 'whisper', 'caption', 'jagged', 'rounded', 'scallop', 'blob', 'angular', 'impact', 'serrated'] as const;
 
   /** Otros globos de la página a los que se puede enlazar el seleccionado. */
   const linkChoices = $derived(
@@ -99,8 +115,9 @@
     {:else if o.type === 'balloon'}
       <label class="block">
         <span>{t('insp.text')}</span>
-        <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => set({ text: e.currentTarget.value }, 'text')}></textarea>
+        <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => { set({ text: e.currentTarget.value }, 'text'); trackSel(e.currentTarget, o.id); }} onselect={(e) => trackSel(e.currentTarget, o.id)} onkeyup={(e) => trackSel(e.currentTarget, o.id)} onmouseup={(e) => trackSel(e.currentTarget, o.id)} onkeydown={(e) => richKey(e)}></textarea>
       </label>
+      <RichBar {o} />
       <div class="grid2">
         <label class="block">
           <span>{t('insp.style')}</span>
@@ -143,6 +160,10 @@
       {#if o.style !== 'caption' && o.style !== 'jagged' && o.style !== 'shout' && o.style !== 'impact' && !o.vertical}
         <RangeField label={t('insp.textMargin')} value={o.textMargin ?? 6} min={0} max={40} step={1} onchange={(v) => set({ textMargin: v }, 'tm')} />
       {/if}
+      {#if o.style === 'serrated'}
+        <RangeField label={t('insp.toothLen')} value={o.toothLen ?? 0.09} min={0.03} max={0.3} step={0.01} onchange={(v) => set({ toothLen: v }, 'tl')} />
+        <RangeField label={t('insp.toothWidth')} value={o.toothWidth ?? 0.1} min={0.04} max={0.4} step={0.01} onchange={(v) => set({ toothWidth: v }, 'tww')} />
+      {/if}
       {#if TAIL_STYLES.includes(o.style)}
         <h4 class="sub">{t('insp.tail')}</h4>
         <RangeField label={t('insp.tailWidth')} value={o.tailWidth ?? 1} min={0.1} max={3} step={0.05} onchange={(v) => set({ tailWidth: v }, 'tw')} />
@@ -178,8 +199,9 @@
     {:else if o.type === 'text'}
       <label class="block">
         <span>{t('insp.text')}</span>
-        <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => set({ text: e.currentTarget.value }, 'text')}></textarea>
+        <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => { set({ text: e.currentTarget.value }, 'text'); trackSel(e.currentTarget, o.id); }} onselect={(e) => trackSel(e.currentTarget, o.id)} onkeyup={(e) => trackSel(e.currentTarget, o.id)} onmouseup={(e) => trackSel(e.currentTarget, o.id)} onkeydown={(e) => richKey(e)}></textarea>
       </label>
+      <RichBar {o} />
       <div class="grid2">
         <label class="block">
           <span>{t('insp.font')}</span>

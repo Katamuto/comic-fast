@@ -30,11 +30,12 @@
   import { panelPath } from '../render/panelShape';
 import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/types';
   import { fitObjectText, textRegion } from '../render/objectText';
-  import { TAIL_STYLES, curveFromPoint, curveHandle } from '../render/balloon';
+  import { TAIL_STYLES, curveFromPoint, curveHandle, tailWidthFromPoint, tailWidthHandle } from '../render/balloon';
   import { needsRegion } from '../render/patterns';
   import { gradientGuides, moveGuide } from '../render/paint';
   import { parseColor } from '../render/color';
   import { contextMenu } from '../app/contextMenu.svelte';
+  import { gridLines } from '../model/grid';
   import { actionEntries, contextEntries } from '../app/actions';
   import { fontState } from '../render/fonts.svelte';
   import { familyCss } from '../render/textLayout';
@@ -60,11 +61,13 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   }
   type Dir = -1 | 0 | 1;
   type Drag =
+    | { kind: 'cut'; a: Point; b: Point }
     | (PatchDrag & { kind: 'move'; start: Point; ids: ID[]; origin: Point })
     | (PatchDrag & { kind: 'resize'; id: ID; hx: Dir; hy: Dir; orig: Rotated })
     | (PatchDrag & { kind: 'rotate'; id: ID; center: Point; startAngle: number; origRot: number })
     | (PatchDrag & { kind: 'tail'; id: ID })
     | (PatchDrag & { kind: 'tailo'; id: ID })
+    | (PatchDrag & { kind: 'twidth'; id: ID })
     | (PatchDrag & { kind: 'tcurve'; id: ID })
     | (PatchDrag & { kind: 'vertex'; id: ID; index: number })
     | (PatchDrag & { kind: 'layermove'; id: ID; layerId: ID; start: Point; orig: Point })
@@ -75,6 +78,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     | { kind: 'pan'; sx: number; sy: number; left: number; top: number };
 
   let drag: Drag | null = null;
+  /** Recta de corte que se está dibujando (modo cortar viñetas). */
+  let cutLine = $state<{ a: Point; b: Point } | null>(null);
   let lastDown = { t: 0, id: '' };
 
   /** Propiedades que cambian al mover un vértice (la caja se reajusta a la forma). */
@@ -145,6 +150,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     return { a, b, r: Math.hypot(b.x - a.x, b.y - a.y), radial: tg.g.kind === 'radial', c1: parseColor(tg.g.c1).hex, c2: parseColor(tg.g.c2).hex };
   });
   /** Tirador de curvatura de la cola del globo seleccionado. */
+  const gridV = $derived(editor.showGrid ? gridLines(editor.doc.pageW, editor.doc.pageH, editor.grid) : { x: [], y: [] });
+  const widthPt = $derived(single && single.type === 'balloon' && showTail ? tailWidthHandle(single) : null);
   const curvePt = $derived(single && single.type === 'balloon' && showTail ? curveHandle(single) : null);
   const polyPx = $derived(
     single && single.type === 'panel' && single.shape === 'poly' ? pointsPx(single.points, single.w, single.h) : []
@@ -331,6 +338,14 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     const p = toPagePoint(e);
     const s = editor.single;
 
+    // Modo «cortar viñetas»: se arrastra una recta que parte la viñeta.
+    if (editor.cutMode) {
+      drag = { kind: 'cut', a: p, b: p };
+      cutLine = { a: p, b: p };
+      capture(e);
+      return;
+    }
+
     // Tiradores de la selección.
     const handleEl = target.closest('[data-handle]');
     const guideId = handleEl?.getAttribute('data-handle');
@@ -392,6 +407,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         };
       } else if (h === 'tcurve') {
         drag = { kind: 'tcurve', id: s.id, label: t('drag.tailCurve'), keys: ['tailCurve'], before: snapshotOf([s.id], ['tailCurve']) };
+      } else if (h === 'twidth') {
+        drag = { kind: 'twidth', id: s.id, label: t('drag.tailWidth'), keys: ['tailWidth'], before: snapshotOf([s.id], ['tailWidth']) };
       } else if (h === 'tailo') {
         drag = { kind: 'tailo', id: s.id, label: t('drag.tailOrigin'), keys: ['tailOx', 'tailOy'], before: snapshotOf([s.id], ['tailOx', 'tailOy']) };
       } else if (h === 'tail') {
@@ -476,8 +493,10 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         };
       } else {
         // Los objetos bloqueados no se mueven (siguen pudiéndose seleccionar).
-        const ids = editor.selection.filter((sid) => !editor.find(sid)?.locked);
-        if (ids.length === 0) {
+        const own = editor.selection.filter((sid) => !editor.find(sid)?.locked);
+        // Los globos y textos metidos en una viñeta la acompañan.
+        const ids = [...own, ...editor.childrenOf(own).filter((cid) => !editor.find(cid)?.locked)];
+        if (own.length === 0) {
           editor.status = t('status.locked');
           return;
         }
@@ -516,6 +535,19 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
       if (touches.size >= 2) return;
     }
     if (!drag) return;
+
+    if (drag.kind === 'cut') {
+      let q = toPagePoint(e);
+      if (e.shiftKey) {
+        // Mayús: ángulos de 15°
+        const ang = Math.round(Math.atan2(q.y - drag.a.y, q.x - drag.a.x) / (Math.PI / 12)) * (Math.PI / 12);
+        const len = Math.hypot(q.x - drag.a.x, q.y - drag.a.y);
+        q = { x: drag.a.x + Math.cos(ang) * len, y: drag.a.y + Math.sin(ang) * len };
+      }
+      drag = { ...drag, b: q };
+      cutLine = { a: drag.a, b: q };
+      return;
+    }
 
     if (drag.kind === 'pan') {
       if (e.pointerType === 'touch' && drag.sx !== undefined && dist({ x: drag.sx, y: drag.sy }, { x: e.clientX, y: e.clientY }) > 8) touchPanMoved = true;
@@ -577,6 +609,14 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         if (!o) break;
         const l = toLocal(o, p);
         editor.live(drag.id, { tailX: l.x, tailY: l.y });
+        break;
+      }
+      case 'twidth': {
+        const o = editor.find(drag.id);
+        if (!o || o.type !== 'balloon') break;
+        const l = toLocal(o, p);
+        const w = tailWidthFromPoint(o, { x: l.x + o.w / 2, y: l.y + o.h / 2 });
+        if (w !== null) editor.live(drag.id, { tailWidth: w });
         break;
       }
       case 'tailo': {
@@ -662,6 +702,17 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     }
     if (!drag) return;
     const d = drag;
+    if (d.kind === 'cut') {
+      drag = null;
+      cutLine = null;
+      if (Math.hypot(d.b.x - d.a.x, d.b.y - d.a.y) > 6 / editor.zoom) editor.cutPanels(d.a, d.b);
+      try {
+        viewport?.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ya liberado */
+      }
+      return;
+    }
     if (d.kind === 'pan' && e.pointerType === 'touch' && !touchPanMoved && e.type === 'pointerup') editor.select([]);
     drag = null;
     marquee = null;
@@ -713,6 +764,10 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   });
 
   function onWindowKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && editor.cutMode) {
+      editor.cutMode = false;
+      return;
+    }
     if (e.code === 'Space' && !isTyping(e.target)) {
       spaceDown = true;
       e.preventDefault();
@@ -841,23 +896,18 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         </svg>
 
         {#if editor.showGrid}
-          <defs>
-            <pattern id="grid-main" width={editor.gridSize} height={editor.gridSize} patternUnits="userSpaceOnUse">
-              <path
-                d={`M ${editor.gridSize} 0 L 0 0 L 0 ${editor.gridSize}`}
-                fill="none"
-                stroke="rgb(47 125 246 / 0.35)"
-                stroke-width="1"
-                vector-effect="non-scaling-stroke"
-              />
-            </pattern>
-          </defs>
-          <rect
-            width={editor.doc.pageW}
-            height={editor.doc.pageH}
-            fill="url(#grid-main)"
-            pointer-events="none"
-          />
+          <g pointer-events="none" fill="none" vector-effect="non-scaling-stroke">
+            {#each gridV.x as l}
+              <line x1={l.at} y1="0" x2={l.at} y2={editor.doc.pageH} stroke={l.major ? 'rgb(47 125 246 / 0.5)' : 'rgb(47 125 246 / 0.2)'} stroke-width="1" vector-effect="non-scaling-stroke" />
+            {/each}
+            {#each gridV.y as l}
+              <line x1="0" y1={l.at} x2={editor.doc.pageW} y2={l.at} stroke={l.major ? 'rgb(47 125 246 / 0.5)' : 'rgb(47 125 246 / 0.2)'} stroke-width="1" vector-effect="non-scaling-stroke" />
+            {/each}
+          </g>
+        {/if}
+
+        {#if cutLine}
+          <line x1={cutLine.a.x} y1={cutLine.a.y} x2={cutLine.b.x} y2={cutLine.b.y} stroke="#e5342d" stroke-width="2.5" stroke-dasharray="8 5" vector-effect="non-scaling-stroke" pointer-events="none" />
         {/if}
 
         <!-- Contornos de selección -->
@@ -1068,6 +1118,20 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
                 style:cursor="move"
               />
             {/if}
+            {#if widthPt && single.type === 'balloon'}
+              <rect
+                data-handle="twidth"
+                x={widthPt.x - hs * 0.5}
+                y={widthPt.y - hs * 0.5}
+                width={hs}
+                height={hs}
+                fill="#ffffff"
+                stroke="#ff8a3d"
+                stroke-width="2"
+                vector-effect="non-scaling-stroke"
+                style:cursor="ew-resize"
+              />
+            {/if}
             {#if hasTailStyle && single.type === 'balloon'}
               <circle
                 data-handle="tailo"
@@ -1145,9 +1209,23 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
             style:text-align={edit.o.vertical ? (edit.o.align === 'left' || edit.o.align === 'justify' ? 'start' : edit.o.align === 'right' ? 'end' : 'center') : edit.o.align}
             style:writing-mode={edit.o.vertical ? 'vertical-rl' : undefined}
             style:color={edit.o.color}
-            oninput={(e) => editor.patch([edit.o.id], { text: e.currentTarget.value }, `text:${edit.o.id}`)}
+            oninput={(e) => {
+              editor.patch([edit.o.id], { text: e.currentTarget.value }, `text:${edit.o.id}`);
+              editor.textSel = { id: edit.o.id, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd };
+            }}
+            onselect={(e) => (editor.textSel = { id: edit.o.id, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd })}
+            onkeyup={(e) => (editor.textSel = { id: edit.o.id, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd })}
+            onmouseup={(e) => (editor.textSel = { id: edit.o.id, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd })}
             onblur={() => editor.stopEditing()}
             onkeydown={(e) => {
+              const k = e.key.toLowerCase();
+              const flag = (e.ctrlKey || e.metaKey) && !e.altKey ? (k === 'b' ? 'bold' : k === 'i' ? 'italic' : k === 'u' ? 'underline' : null) : null;
+              if (flag) {
+                e.preventDefault();
+                editor.textSel = { id: edit.o.id, from: e.currentTarget.selectionStart, to: e.currentTarget.selectionEnd };
+                editor.formatText({ toggle: flag });
+                return;
+              }
               if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
                 e.preventDefault();
                 editor.stopEditing();
@@ -1158,9 +1236,35 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
       {/if}
     </div>
   </div>
+  {#if editor.cutMode}
+    <div class="cutbar" role="toolbar" aria-label={t('cut.title')} onpointerdown={(e) => e.stopPropagation()}>
+      <span>{t('cut.hint')}</span>
+      <label>{t('cut.gap')} <input type="number" min="0" max="200" step="1" value={editor.cutGap} oninput={(e) => (editor.cutGap = Math.max(0, Number(e.currentTarget.value) || 0))} /></label>
+      <button type="button" onclick={() => (editor.cutMode = false)}>{t('cut.done')}</button>
+    </div>
+  {/if}
 </div>
 
 <style>
+  .cutbar {
+    position: fixed;
+    bottom: 3.2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+  }
+  .cutbar input {
+    width: 4rem;
+  }
   .viewport {
     position: relative;
     height: 100%;

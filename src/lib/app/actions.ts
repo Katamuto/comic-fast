@@ -129,6 +129,15 @@ export const actions: Action[] = [
     checked: () => editor.layerMode
   },
   {
+    id: 'panel.cloud',
+    label: () => t('act.panel.cloud'),
+    run: () => {
+      const p = selectedPanel();
+      if (p) editor.panelToCloud(p.id);
+    },
+    enabled: () => selectedPanel() !== null
+  },
+  {
     id: 'panel.toPolygon',
     label: () => t('act.panel.toPolygon'),
     run: () => {
@@ -183,6 +192,7 @@ export const actions: Action[] = [
     },
     checked: () => editor.showGrid
   },
+  { id: 'view.gridSettings', label: () => t('act.view.gridSettings'), run: () => { editor.showGridDialog = true; } },
   {
     id: 'view.snap',
     label: () => t('act.view.snap'),
@@ -193,6 +203,17 @@ export const actions: Action[] = [
     checked: () => editor.snap
   },
 
+  { id: 'edit.linkTail', label: () => t('act.edit.linkTail'), run: () => editor.linkBalloons('tail'), enabled: () => editor.canLink() },
+  { id: 'edit.linkMerge', label: () => t('act.edit.linkMerge'), run: () => editor.linkBalloons('merge'), enabled: () => editor.canLink() },
+  { id: 'edit.unlink', label: () => t('act.edit.unlink'), run: () => editor.unlinkBalloons(), enabled: () => editor.canUnlink() },
+  { id: 'panel.cut', label: () => t('act.panel.cut'), run: () => { editor.cutMode = !editor.cutMode; }, checked: () => editor.cutMode },
+  { id: 'panel.split', label: () => t('act.panel.split'), run: () => { editor.showSplit = true; }, enabled: () => editor.canSplit() },
+  { id: 'panel.union', label: () => t('act.panel.union'), run: () => editor.combinePanelsOp('union'), enabled: () => editor.canCombine() },
+  { id: 'panel.intersect', label: () => t('act.panel.intersect'), run: () => editor.combinePanelsOp('intersect'), enabled: () => editor.canCombine() },
+  { id: 'panel.difference', label: () => t('act.panel.difference'), run: () => editor.combinePanelsOp('difference'), enabled: () => editor.canCombine() },
+  { id: 'panel.exclude', label: () => t('act.panel.exclude'), run: () => editor.combinePanelsOp('exclude'), enabled: () => editor.canCombine() },
+  { id: 'edit.intoPanel', label: () => t('act.edit.intoPanel'), run: () => editor.putInPanel(), enabled: () => editor.canPutInPanel() },
+  { id: 'edit.outOfPanel', label: () => t('act.edit.outOfPanel'), run: () => editor.takeOutOfPanel(), enabled: () => editor.canTakeOutOfPanel() },
   { id: 'edit.flipH', label: () => t('act.edit.flipH'), run: () => editor.flip('h'), enabled: () => editor.canFlip() },
   { id: 'edit.flipV', label: () => t('act.edit.flipV'), run: () => editor.flip('v'), enabled: () => editor.canFlip() },
   {
@@ -324,7 +345,7 @@ export const menus: Menu[] = [
       'edit.undo', 'edit.redo', '-', 'edit.cut', 'edit.copy', 'edit.paste', 'edit.duplicate', 'edit.delete', 'edit.selectAll', '-',
       'edit.front', 'edit.forward', 'edit.backward', 'edit.back', '-',
       'edit.lock', '-',
-      'edit.layerMode', 'panel.toPolygon', 'edit.editImage', 'edit.flipH', 'edit.flipV', 'edit.distribute'
+      'edit.layerMode', 'panel.toPolygon', 'panel.cloud', 'edit.editImage', 'edit.flipH', 'edit.flipV', 'edit.distribute', '-', 'edit.linkTail', 'edit.linkMerge', 'edit.unlink', '-', 'edit.intoPanel', 'edit.outOfPanel', '-', 'panel.cut', 'panel.split', 'panel.union', 'panel.intersect', 'panel.difference', 'panel.exclude'
     ]
   },
   {
@@ -337,12 +358,12 @@ export const menus: Menu[] = [
       'page.size.custom'
     ]
   },
-  { label: 'menu.view', entries: ['view.styleMode', '-', 'view.zoomIn', 'view.zoomOut', 'view.zoom100', 'view.fit', '-', 'view.grid', 'view.snap', '-', ...(isTauri ? [] : ['view.fullscreen']), 'view.theme', 'view.textBigger', 'view.textSmaller', 'view.textReset'] },
+  { label: 'menu.view', entries: ['view.styleMode', '-', 'view.zoomIn', 'view.zoomOut', 'view.zoom100', 'view.fit', '-', 'view.grid', 'view.snap', 'view.gridSettings', '-', ...(isTauri ? [] : ['view.fullscreen']), 'view.theme', 'view.textBigger', 'view.textSmaller', 'view.textReset'] },
   { label: 'menu.help', entries: ['help.guide', 'help.welcome', '-', 'help.eula', 'help.about', ...(DONATE_URL ? ['-', 'help.donate'] : [])] }
 ];
 
 /** Entradas del menú contextual (clic derecho). Mismas acciones que el menú Edición. */
-export const contextEntries: string[] = ['edit.cut', 'edit.copy', 'edit.paste', '-', 'edit.duplicate', 'edit.delete', '-', 'edit.editImage', 'edit.flipH', 'edit.flipV'];
+export const contextEntries: string[] = ['edit.cut', 'edit.copy', 'edit.paste', '-', 'edit.duplicate', 'edit.delete', '-', 'edit.editImage', 'edit.flipH', 'edit.flipV', 'edit.linkTail', 'edit.linkMerge', 'edit.unlink', 'edit.intoPanel', 'edit.outOfPanel', '-', 'panel.cut', 'panel.split', 'panel.union', 'panel.intersect', 'panel.difference', 'panel.exclude', 'panel.cloud'];
 
 /** Entradas de un menú contextual a partir de ids de acción ('-' = separador). */
 export function actionEntries(ids: string[]): MenuEntry[] {
@@ -411,7 +432,7 @@ function isTextEntry(t: HTMLElement | null): boolean {
 /** Manejador global de teclado: atajos del registro + teclas del lienzo. */
 export function handleKeydown(e: KeyboardEvent): void {
   // Con un diálogo abierto, los atajos del editor no deben actuar sobre la página.
-  if (editor.showSplash || editor.showAbout || editor.showPageSize || editor.showHelp || editor.showEula || editor.showNotice || editor.showDownload || editor.showFonts || editor.showGlobals || editor.showTemplates || editor.showReorg || editor.showDistribute || imageEditor.showNew || imageEditor.isOpen) return;
+  if (editor.showSplash || editor.showAbout || editor.showPageSize || editor.showHelp || editor.showEula || editor.showNotice || editor.showDownload || editor.showFonts || editor.showGlobals || editor.showGridDialog || editor.showSplit || editor.showTemplates || editor.showReorg || editor.showDistribute || imageEditor.showNew || imageEditor.isOpen) return;
   const target = e.target as HTMLElement | null;
   const typing = isTextEntry(target);
 

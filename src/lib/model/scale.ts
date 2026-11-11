@@ -43,6 +43,11 @@ export function cloneWithNewIds(page: Page): Page {
       if (to) o.link = { ...o.link, to };
       else delete o.link;
     }
+    if ((o.type === 'balloon' || o.type === 'text') && o.parent) {
+      const par = ids.get(o.parent);
+      if (par) o.parent = par;
+      else delete o.parent;
+    }
   }
   return copy;
 }

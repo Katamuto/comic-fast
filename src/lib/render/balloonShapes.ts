@@ -9,7 +9,14 @@ export interface Pt {
   y: number;
 }
 
-export type ShapeKind = 'rounded' | 'scallop' | 'blob' | 'angular' | 'impact';
+export type ShapeKind = 'rounded' | 'scallop' | 'blob' | 'angular' | 'impact' | 'serrated';
+
+export interface ShapeOpts {
+  /** Largo de los picos de sierra, como fracción del lado menor (0.03…0.3). */
+  toothLen?: number;
+  /** Ancho de los picos, como fracción del lado menor (0.04…0.4). */
+  toothWidth?: number;
+}
 
 /** Número pseudoaleatorio estable (0…1): el mismo globo siempre sale igual. */
 export function hash01(n: number): number {
@@ -52,7 +59,7 @@ export function roundedPoly(w: number, h: number, inset: number): Pt[] {
 }
 
 /** Nube suave de cómic antiguo: muchos arcos poco profundos con cúspides marcadas. */
-export function scallopPoly(cx: number, cy: number, rx: number, ry: number): Pt[] {
+export function scallopPoly(cx: number, cy: number, rx: number, ry: number, steps = 10): Pt[] {
   const perim = Math.PI * (rx + ry);
   const bumps = Math.round(clampN(perim / clampN(Math.min(rx, ry) * 0.62, 26, 64), 8, 26));
   // los arcos abomban hacia fuera (0.2 de la cuerda): se encoge la base para no salirse de la caja
@@ -65,7 +72,6 @@ export function scallopPoly(cx: number, cy: number, rx: number, ry: number): Pt[
     base.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
   }
   const out: Pt[] = [];
-  const steps = 10;
   for (let i = 0; i < bumps; i++) {
     const p = base[i];
     const q = base[(i + 1) % bumps];
@@ -173,7 +179,63 @@ export function impactPoly(cx: number, cy: number, rx: number, ry: number, seed 
   return out;
 }
 
-export function shapePoly(kind: ShapeKind, w: number, h: number, inset: number): Pt[] {
+/** Radios de la base (valles) de los dientes de sierra: dejan sitio a los picos dentro de la caja. */
+export function serratedBase(w: number, h: number, inset: number, o: ShapeOpts = {}): { rx: number; ry: number; len: number } {
+  const len = clampN(o.toothLen ?? 0.09, 0.03, 0.3) * Math.min(w, h);
+  return { rx: Math.max(1, w / 2 - inset - len * 1.3), ry: Math.max(1, h / 2 - inset - len * 1.3), len };
+}
+
+/** Elipse con picos de sierra de ancho y largo variables (siempre iguales para el mismo globo). */
+export function serratedPoly(w: number, h: number, inset: number, o: ShapeOpts = {}, seed = 5): Pt[] {
+  const { rx, ry, len } = serratedBase(w, h, inset, o);
+  const cx = w / 2;
+  const cy = h / 2;
+  const wid = clampN(o.toothWidth ?? 0.1, 0.04, 0.4) * Math.min(w, h);
+  // longitud de arco acumulada de la elipse base
+  const N = 720;
+  const cum = [0];
+  for (let i = 1; i <= N; i++) {
+    const a0 = ((i - 1) / N) * TAU;
+    const a1 = (i / N) * TAU;
+    cum.push(cum[i - 1] + Math.hypot(rx * (Math.cos(a1) - Math.cos(a0)), ry * (Math.sin(a1) - Math.sin(a0))));
+  }
+  const perim = cum[N];
+  const teeth = Math.max(6, Math.round(perim / wid));
+  const raw: number[] = [];
+  for (let i = 0; i < teeth; i++) raw.push(0.65 + 0.7 * hash01(seed + i * 3));
+  const sum = raw.reduce((a, b) => a + b, 0);
+  const angleAt = (sArc: number) => {
+    let lo = 0;
+    let hi = N;
+    while (hi - lo > 1) {
+      const m = (lo + hi) >> 1;
+      if (cum[m] <= sArc) lo = m;
+      else hi = m;
+    }
+    const u = (sArc - cum[lo]) / Math.max(1e-9, cum[hi] - cum[lo]);
+    return ((lo + u) / N) * TAU;
+  };
+  const pt = (a: number, out: number): Pt => {
+    // normal de la elipse en el ángulo paramétrico a
+    const nx = Math.cos(a) / rx;
+    const ny = Math.sin(a) / ry;
+    const nl = Math.hypot(nx, ny) || 1;
+    return { x: cx + rx * Math.cos(a) + (nx / nl) * out, y: cy + ry * Math.sin(a) + (ny / nl) * out };
+  };
+  const out: Pt[] = [];
+  let sArc = 0;
+  for (let i = 0; i < teeth; i++) {
+    const width = (raw[i] / sum) * perim;
+    const lift = len * (0.55 + 0.9 * hash01(seed + i * 3 + 1));
+    const lean = 0.2 + 0.6 * hash01(seed + i * 3 + 2); // dónde cae la punta dentro del diente (sierra asimétrica)
+    out.push(pt(angleAt(sArc), 0));
+    out.push(pt(angleAt(sArc + width * lean), Math.min(lift, len * 1.3)));
+    sArc += width;
+  }
+  return out;
+}
+
+export function shapePoly(kind: ShapeKind, w: number, h: number, inset: number, opts: ShapeOpts = {}): Pt[] {
   const cx = w / 2;
   const cy = h / 2;
   const rx = w / 2 - inset;
@@ -189,6 +251,8 @@ export function shapePoly(kind: ShapeKind, w: number, h: number, inset: number):
       return angularPoly(cx, cy, rx, ry);
     case 'impact':
       return impactPoly(cx, cy, rx, ry);
+    case 'serrated':
+      return serratedPoly(w, h, inset, opts);
   }
 }
 

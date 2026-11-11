@@ -13,7 +13,7 @@ Tauri 2 (Rust) + Svelte 5 + TypeScript. Sin Electron: el instalador usa el WebVi
 │        │ ⧉ │   barra lateral      │───────────────│
 │        │ … │   de herramientas    │ Propiedades   │
 ├────────┴───┴──────────────────────┴──────────────┤
-│ Comic Fast v0.13.0 · Página 1/1 · 50% · Guardado  │
+│ Comic Fast v0.14.0 · Página 1/1 · 50% · Guardado  │
 └──────────────────────────────────────────────────┘
 ```
 

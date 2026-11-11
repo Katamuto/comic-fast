@@ -8,6 +8,8 @@
   import TextView from './objects/TextView.svelte';
   import PatternView from './objects/PatternView.svelte';
   import { blendCss } from '../render/blend';
+  import { panelPath } from '../render/panelShape';
+  import type { PanelObj } from '../model/types';
 
   interface Props {
     obj: PageObject;
@@ -19,16 +21,23 @@
     hideText?: boolean;
     /** Pasada de dibujo de un globo fundido con otros (ver model/balloonLinks.ts). */
     phase?: 'all' | 'stroke' | 'fill' | 'text';
+    /** Viñeta a cuya forma se recorta (globos/textos metidos en una viñeta a propósito). */
+    clipTo?: PanelObj | null;
   }
-  let { obj, assets, scope, interactive = false, hideText = false, phase = 'all' }: Props = $props();
+  let { obj, assets, scope, interactive = false, hideText = false, phase = 'all', clipTo = null }: Props = $props();
 
   const dist = $derived(obj.distort && obj.distort.amount > 0 ? obj.distort : null);
   const distId = $derived(`${scope}-dist-${obj.id}`);
+  const clipTransform = $derived(
+    clipTo ? `rotate(${clipTo.rotation} ${clipTo.x + clipTo.w / 2} ${clipTo.y + clipTo.h / 2}) translate(${clipTo.x} ${clipTo.y})` : ''
+  );
+  const clipId = $derived(`${scope}-pclip-${obj.id}`);
   const transform = $derived(
     `rotate(${obj.rotation} ${obj.x + obj.w / 2} ${obj.y + obj.h / 2}) translate(${obj.x} ${obj.y})`
   );
 </script>
 
+{#snippet content()}
 {#if dist}
   <defs>
     <!-- Distorsión ondulada: ruido que desplaza los píxeles (escala × 2 porque el ruido se centra en 0,5). -->
@@ -54,6 +63,14 @@
     <rect class="hit" width={obj.w} height={obj.h} fill="transparent" />
   {/if}
 </g>
+{/snippet}
+
+{#if clipTo}
+  <defs><clipPath id={clipId}><path d={panelPath(clipTo)} transform={clipTransform} /></clipPath></defs>
+  <g clip-path={`url(#${clipId})`}>{@render content()}</g>
+{:else}
+  {@render content()}
+{/if}
 
 <style>
   .hit {

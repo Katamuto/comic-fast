@@ -1,5 +1,6 @@
 import type { BalloonStyle, Box } from '../model/types';
 import {
+  serratedBase,
   cutPolygon,
   ellipseExitAngle,
   ellipsePoly,
@@ -12,7 +13,7 @@ import {
   type ShapeKind
 } from './balloonShapes';
 
-const POLY_STYLES: readonly BalloonStyle[] = ['rounded', 'scallop', 'blob', 'angular'];
+const POLY_STYLES: readonly BalloonStyle[] = ['rounded', 'scallop', 'blob', 'angular', 'serrated'];
 /** Estilos con cola (punta + origen movibles). */
 export const TAIL_STYLES: readonly BalloonStyle[] = ['speech', 'whisper', 'thought', ...POLY_STYLES];
 
@@ -30,6 +31,9 @@ export interface BalloonInput {
   /** Origen de la cola, relativo al centro (0,0 = centro). */
   tailOx?: number;
   tailOy?: number;
+  /** Picos de sierra (solo 'serrated'), como fracción del lado menor. */
+  toothLen?: number;
+  toothWidth?: number;
 }
 
 export interface Dot {
@@ -148,7 +152,7 @@ const tailAngle = (o: BalloonInput, rx: number, ry: number) =>
 /** Base de la cola en un globo-polígono (rounded, scallop, blob, angular). */
 function polygonTail(o: BalloonInput): { d: string; hasTail: boolean; p1: Pt; p2: Pt; poly: Pt[] } {
   const inset = o.strokeWidth / 2;
-  const poly = shapePoly(o.style as ShapeKind, o.w, o.h, inset);
+  const poly = shapePoly(o.style as ShapeKind, o.w, o.h, inset, { toothLen: o.toothLen, toothWidth: o.toothWidth });
   const cx = o.w / 2;
   const cy = o.h / 2;
   const origin = { x: cx + (o.tailOx ?? 0), y: cy + (o.tailOy ?? 0) };
@@ -235,6 +239,29 @@ export function tailFrame(o: BalloonInput): TailFrame | null {
   };
 }
 
+/** Semiancho (unidades) de la base de la cola con tailWidth = 1. */
+function halfAtUnit(o: BalloonInput): number {
+  const inset = o.strokeWidth / 2;
+  if (o.style === 'thought') return Math.min(o.w, o.h) * 0.08;
+  return SPREAD * ((o.w / 2 - inset + (o.h / 2 - inset)) / 2);
+}
+
+/** Posición del tirador de ancho de la cola (un lado de la base) o null si no hay cola. */
+export function tailWidthHandle(o: BalloonInput): { x: number; y: number } | null {
+  const fr = tailFrame(o);
+  if (!fr) return null;
+  const half = halfAtUnit(o) * clampN(o.tailWidth ?? 1, 0.1, 3);
+  return { x: fr.base.x + fr.normal.x * half, y: fr.base.y + fr.normal.y * half };
+}
+
+/** tailWidth que corresponde a arrastrar el tirador hasta `p` (coords. locales del globo). */
+export function tailWidthFromPoint(o: BalloonInput, p: { x: number; y: number }): number | null {
+  const fr = tailFrame(o);
+  if (!fr) return null;
+  const half = Math.abs((p.x - fr.base.x) * fr.normal.x + (p.y - fr.base.y) * fr.normal.y);
+  return clampN(Math.round((half / halfAtUnit(o)) * 100) / 100, 0.1, 3);
+}
+
 /** Curvatura (−1…1) que hace pasar la cola por el punto `p` (coords. locales). */
 export function curveFromPoint(o: BalloonInput, p: { x: number; y: number }): number | null {
   const fr = tailFrame(o);
@@ -313,7 +340,11 @@ export function balloonGeometry(o: BalloonInput): BalloonGeometry {
 
   if (POLY_STYLES.includes(o.style)) {
     const pt = polygonTail(o);
-    const inner = o.style === 'scallop' ? ellipsePoly(cx, cy, (w / 2 - inset) * 0.86, (h / 2 - inset) * 0.86, 72) : pt.poly;
+    let inner = o.style === 'scallop' ? ellipsePoly(cx, cy, (w / 2 - inset) * 0.86, (h / 2 - inset) * 0.86, 72) : pt.poly;
+    if (o.style === 'serrated') {
+      const b = serratedBase(w, h, inset, { toothLen: o.toothLen, toothWidth: o.toothWidth });
+      inner = ellipsePoly(cx, cy, b.rx, b.ry, 72);
+    }
     return {
       d: pt.d,
       dots: [],

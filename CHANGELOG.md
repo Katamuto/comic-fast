@@ -1,5 +1,19 @@
 # Cambios
 
+## 0.14.0
+
+**Nuevo**
+- **Cuadrícula relativa a la página** con columnas y subdivisiones ajustables (Vista → Cuadrícula…); el imán usa la subdivisión.
+- **Viñetas**: cortar con una línea (modo «Cortar», Mayús = ángulos de 15°, con separación), dividir en N×M, y **operaciones booleanas** (unir, intersección, diferencia, excluir). Viñeta de nube y «Viñeta: bordes de nube».
+- **Globos**: enlazar seleccionando varios (barra, menú Edición, clic derecho; cola al siguiente o cuerpos fundidos), tirador de **ancho de cola** en el lienzo, nuevo globo **redondo de sierra** (largo y ancho de picos), **meter en viñeta** a propósito (se recorta a la viñeta y la acompaña).
+- **Texto con formato por partes**: negrita, cursiva, subrayado, tachado, color y fuente sobre la selección (Inspector y Ctrl+B/I/U).
+- Panel de imágenes importadas: **filtros** (en uso / sin usar, aseguradas, forma, búsqueda, orden).
+- Los desplegables ya no se salen de la pantalla (lista propia con scroll).
+
+**Arreglado**
+- El recurso «Globos fusionados» ahora sí viene fusionado; los recursos pueden enlazar sus propios objetos.
+
+
 ## 0.13.0
 
 **Nuevo**

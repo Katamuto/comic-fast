@@ -9,6 +9,7 @@
   import { warpActive, warpGlyphs, GLYPH_MID } from '../../render/textWarp';
   import { canvasMeasure } from '../../render/objectText';
   import { isGradient } from '../../render/paint';
+  import RichSegs from './RichSegs.svelte';
   import GradientDefs from './GradientDefs.svelte';
 
   interface Props {
@@ -39,7 +40,15 @@
     if (obj.align !== 'justify' || obj.vertical) return null;
     void fontState.ready;
     const w = canvasMeasure(fontCss(obj, fit.fontSize));
-    return fit.lines.map((l, i) => (fit.last?.[i] ? 0 : justifySpacing(l, region.w, w)));
+    return fit.lines.map((l, i) => {
+      if (fit.last?.[i]) return 0;
+      if (fit.lineWidths && fit.words) {
+        const gaps = Math.max(0, (fit.words[i]?.length ?? 1) - 1);
+        const extra = region.w - fit.lineWidths[i];
+        return gaps > 0 && extra > 0 ? extra / gaps : 0;
+      }
+      return justifySpacing(l, region.w, w);
+    });
   });
   const warped = $derived.by(() => {
     if (obj.vertical || !warpActive(obj.warp) || !obj.text) return null;
@@ -80,7 +89,7 @@
     paint-order="stroke"
   >
     {#each fit.lines as line, i}
-      <tspan x={tx} y={region.y + i * fit.lineHeight + fit.fontSize * 0.82} word-spacing={spacing?.[i] || undefined}>{line}</tspan>
+      <tspan x={tx} y={region.y + i * fit.lineHeight + fit.fontSize * 0.82} word-spacing={spacing?.[i] || undefined}>{#if fit.segs?.[i]}<RichSegs segs={fit.segs[i]} base={obj} />{:else}{line}{/if}</tspan>
     {/each}
   </text>
 {/if}

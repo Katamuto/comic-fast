@@ -3,6 +3,7 @@
 <script lang="ts">
   import type { BalloonObj } from '../../model/types';
   import { fillRef, isGradient } from '../../render/paint';
+  import RichSegs from './RichSegs.svelte';
   import GradientDefs from './GradientDefs.svelte';
   import GradientFill from './GradientFill.svelte';
   import { parseColor } from '../../render/color';
@@ -47,7 +48,17 @@
     if (obj.align !== 'justify' || obj.vertical) return null;
     void fontState.ready;
     const w = canvasMeasure(fontCss(obj, fit.fontSize));
-    return fit.lines.map((l, i) => (fit.last?.[i] ? 0 : justifySpacing(l, fit.lineRects?.[i]?.w ?? geo.textBox.w, w)));
+    return fit.lines.map((l, i) => {
+      if (fit.last?.[i]) return 0;
+      const boxW = fit.lineRects?.[i]?.w ?? geo.textBox.w;
+      // con formato por partes, el ancho real de la línea viene del ajuste
+      if (fit.lineWidths && fit.words) {
+        const gaps = Math.max(0, (fit.words[i]?.length ?? 1) - 1);
+        const extra = boxW - fit.lineWidths[i];
+        return gaps > 0 && extra > 0 ? extra / gaps : 0;
+      }
+      return justifySpacing(l, boxW, w);
+    });
   });
   /** Posición de cada línea: sigue el contorno (lineRects) o la caja rectangular. */
   const placed = $derived(
@@ -110,7 +121,7 @@
     text-anchor={anchor}
   >
     {#each placed as p, i}
-      <tspan x={p.x} y={p.y} word-spacing={spacing?.[i] || undefined}>{p.line}</tspan>
+      <tspan x={p.x} y={p.y} word-spacing={spacing?.[i] || undefined}>{#if fit.segs?.[i]}<RichSegs segs={fit.segs[i]} base={obj} />{:else}{p.line}{/if}</tspan>
     {/each}
   </text>
 {/if}

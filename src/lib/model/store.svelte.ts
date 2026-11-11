@@ -28,6 +28,10 @@ import { scaleGlobals } from './globals';
 import { userFonts } from '../render/userFonts.svelte';
 import { makeProxy, VIEW_MAX, THUMB_MAX } from '../imageedit/proxy';
 import { bytesToBlob, imageSize, mimeFromName, svgIntrinsicSize } from '../io/images';
+import { scallopPoly } from '../render/balloonShapes';
+import { applyFormat, shiftSpans, toggleFlag, type FmtKey } from '../render/richText';
+import { DEFAULT_GRID, gridStep, type GridSpec } from './grid';
+import { combinePanels, cutPolys, gridCuts, panelLike, panelPolyPage } from './panelOps';
 import type {
   Asset,
   AssetData,
@@ -38,6 +42,9 @@ import type {
   ID,
   LayerInit,
   ObjectInit,
+  Span,
+  TextObj,
+  BalloonObj,
   Page,
   PageObject,
   PanelLayer,
@@ -93,7 +100,20 @@ class Editor {
   zoom = $state(0.5);
   showGrid = $state(false);
   snap = $state(false);
-  gridSize = 20;
+  /** Cuadrícula relativa al ancho de la página (ver model/grid.ts). */
+  grid = $state<GridSpec>({ ...DEFAULT_GRID });
+  showGridDialog = $state(false);
+  /** Modo «cortar viñetas»: arrastrar una recta sobre una viñeta la parte en dos. */
+  cutMode = $state(false);
+  /** Separación (unidades de página) que queda entre las dos piezas de un corte. */
+  cutGap = $state(0);
+  showSplit = $state(false);
+  /** Última selección en un cuadro de texto (para dar formato a una parte del texto aunque el foco cambie). */
+  textSel = $state<{ id: ID; from: number; to: number } | null>(null);
+  /** Paso del imán (unidades de página). */
+  get gridSize(): number {
+    return gridStep(this.doc.pageW, this.grid);
+  }
 
   // --- archivo -------------------------------------------------------------
   filePath = $state<string | null>(null);
@@ -298,6 +318,19 @@ class Editor {
       return o;
     });
     const ids = objs.map((o) => o.id);
+    // Un enlace «@n» apunta al objeto n de este mismo lote (los recursos no conocen los ids todavía).
+    for (const o of objs) {
+      if (o.type === 'balloon' && o.link && o.link.to.startsWith('@')) {
+        const target = ids[Number(o.link.to.slice(1))];
+        if (target) o.link = { ...o.link, to: target };
+        else delete o.link;
+      }
+      if ((o.type === 'balloon' || o.type === 'text') && o.parent?.startsWith('@')) {
+        const target = ids[Number(o.parent.slice(1))];
+        if (target) o.parent = target;
+        else delete o.parent;
+      }
+    }
     this.history.run({
       label: t('hist.add'),
       redo: () => {
@@ -383,9 +416,14 @@ class Editor {
       if (!o) continue;
       const before: Patch = {};
       const after: Patch = {};
-      for (const k of Object.keys(p)) {
+      // Al cambiar el texto, el formato por partes se reubica solo.
+      let pp = p;
+      if (typeof p.text === 'string' && !('spans' in p) && Array.isArray(o.spans) && typeof o.text === 'string') {
+        pp = { ...p, spans: shiftSpans(o.spans as Span[], o.text, p.text) ?? [] };
+      }
+      for (const k of Object.keys(pp)) {
         const cur = plain(o[k]);
-        const next = plain(p[k]);
+        const next = plain(pp[k]);
         if (!same(cur, next)) {
           before[k] = cur;
           after[k] = next;
@@ -447,6 +485,10 @@ class Editor {
       const o = this.find(id);
       if (o && !o.locked) this.patch([id], { x: o.x + dx, y: o.y + dy }, 'nudge');
     }
+    for (const id of this.childrenOf(ids)) {
+      const o = this.find(id);
+      if (o && !o.locked) this.patch([id], { x: o.x + dx, y: o.y + dy }, 'nudge');
+    }
   }
 
   reorder(mode: ReorderMode): void {
@@ -498,7 +540,18 @@ class Editor {
     const off = 24 * this.pasteCount;
     const inits = this.clipboard.map((o) => {
       const { id: _id, ...rest } = structuredClone(o);
-      return { ...rest, x: o.x + off, y: o.y + off } as ObjectInit;
+      const init = { ...rest, x: o.x + off, y: o.y + off } as ObjectInit;
+      if ((init.type === 'balloon' || init.type === 'text') && init.parent) {
+        const k = this.clipboard.findIndex((c) => c.id === init.parent);
+        if (k >= 0) init.parent = `@${k}`;
+        else delete init.parent;
+      }
+      if (init.type === 'balloon' && init.link) {
+        const k = this.clipboard.findIndex((c) => c.id === init.link!.to);
+        if (k >= 0) init.link = { ...init.link, to: `@${k}` };
+        else delete init.link;
+      }
+      return init;
     });
     this.addObjects(inits);
   }
@@ -574,6 +627,240 @@ class Editor {
       redo: () => move(from, to),
       undo: () => move(to, from)
     });
+  }
+
+  // ===========================================================================
+  // Viñetas: cortar, dividir y combinar
+  // ===========================================================================
+
+  /** Cambia unos objetos por otros en un solo paso deshacible (los nuevos ocupan el sitio del primero quitado). */
+  private replaceObjects(label: string, removeIds: ID[], adds: PageObject[]): void {
+    const pageId = this.page.id;
+    const page = this.page;
+    const removed = page.objects.map((o, i) => ({ o: structuredClone(plain(o)) as PageObject, i })).filter((x) => removeIds.includes(x.o.id));
+    if (removed.length === 0) return;
+    const at = Math.min(...removed.map((r) => r.i));
+    const addIds = adds.map((a) => a.id);
+    // Lo que estaba metido en una viñeta quitada pasa a la primera pieza nueva (o queda libre).
+    const heir = adds.find((a) => a.type === 'panel')?.id;
+    const orphans = page.objects.filter((o) => (o.type === 'balloon' || o.type === 'text') && !!o.parent && removeIds.includes(o.parent))
+      .map((o) => ({ id: o.id, parent: (o as BalloonObj | TextObj).parent }));
+    this.history.run({
+      label,
+      redo: () => {
+        const p = this.pageById(pageId);
+        if (!p) return;
+        p.objects = p.objects.filter((o) => !removeIds.includes(o.id));
+        p.objects.splice(Math.min(at, p.objects.length), 0, ...adds.map((a) => structuredClone(plain(a))));
+        for (const k of orphans) {
+          const o = p.objects.find((x) => x.id === k.id);
+          if (o && (o.type === 'balloon' || o.type === 'text')) o.parent = heir;
+        }
+        this.selection = addIds;
+      },
+      undo: () => {
+        const p = this.pageById(pageId);
+        if (!p) return;
+        p.objects = p.objects.filter((o) => !addIds.includes(o.id));
+        for (const r of [...removed].sort((a, b) => a.i - b.i)) p.objects.splice(Math.min(r.i, p.objects.length), 0, structuredClone(r.o));
+        for (const k of orphans) {
+          const o = p.objects.find((x) => x.id === k.id);
+          if (o && (o.type === 'balloon' || o.type === 'text')) o.parent = k.parent;
+        }
+        this.selection = removeIds;
+      }
+    });
+  }
+
+  private panelsSelected(): PanelObj[] {
+    return this.page.objects.filter((o): o is PanelObj => o.type === 'panel' && this.selection.includes(o.id));
+  }
+
+  canCombine(): boolean {
+    return this.panelsSelected().length >= 2;
+  }
+
+  canSplit(): boolean {
+    return this.panelsSelected().length >= 1;
+  }
+
+  /** Une, intersecta o resta las viñetas seleccionadas (la de más abajo es la base y da el estilo). */
+  combinePanelsOp(op: 'union' | 'intersect' | 'difference' | 'exclude'): void {
+    const ps = this.panelsSelected();
+    if (ps.length < 2) return;
+    const base = ps[0];
+    let polys: Pt[][];
+    if (op === 'exclude') {
+      // Excluir: lo que está en una u otra pero no en las dos = (A − B) + (B − A)
+      const a = combinePanels('difference', [ps[0], ...ps.slice(1)]);
+      const b = combinePanels('difference', [ps[1], ps[0]]);
+      polys = [...a.polys, ...b.polys];
+      if (a.holes + b.holes > 0) {
+        this.status = t('status.panelHole');
+        return;
+      }
+    } else {
+      const r = combinePanels(op, ps);
+      if (r.holes > 0) {
+        this.status = t('status.panelHole');
+        return;
+      }
+      if (op === 'union' && (r.unchanged || r.polys.length > 1)) {
+        this.status = t('status.panelNoTouch');
+        return;
+      }
+      polys = r.polys;
+    }
+    if (polys.length === 0) {
+      this.status = t('status.panelEmpty');
+      return;
+    }
+    const adds = polys.map((poly) => ({ ...panelLike(base, poly), id: uid() }) as PageObject);
+    this.replaceObjects(t(`hist.panel.${op}`), ps.map((p) => p.id), adds);
+  }
+
+  /** Corta con la recta a→b las viñetas seleccionadas o, si no hay, la de más arriba que la recta parta. */
+  cutPanels(a: Pt, b: Pt): void {
+    let targets = this.panelsSelected();
+    if (targets.length === 0) {
+      const all = this.page.objects.filter((o): o is PanelObj => o.type === 'panel');
+      const hit = [...all].reverse().find((p) => cutPolys([panelPolyPage(p)], a, b, 0).length >= 2);
+      targets = hit ? [hit] : [];
+    }
+    this.cutPanelList(targets, [[a, b]]);
+  }
+
+  /** Divide las viñetas seleccionadas en cols × rows partes con una separación entre ellas. */
+  splitPanels(cols: number, rows: number, gap: number): void {
+    const targets = this.panelsSelected();
+    for (const p of targets) this.cutPanelList([p], gridCuts(p, cols, rows), gap, true);
+  }
+
+  private cutPanelList(targets: PanelObj[], lines: [Pt, Pt][], gap = this.cutGap, keepGoing = false): void {
+    let done = false;
+    for (const p of targets) {
+      let polys = [panelPolyPage(p)];
+      for (const [q, r] of lines) polys = cutPolys(polys, q, r, gap);
+      if (polys.length < 2) continue;
+      const adds = polys.map((poly) => ({ ...panelLike(p, poly), id: uid() }) as PageObject);
+      this.replaceObjects(t('hist.panel.split'), [p.id], adds);
+      done = true;
+    }
+    if (!done && !keepGoing) this.status = t('status.cutMiss');
+  }
+
+  /**
+   * Formato por partes del texto del objeto seleccionado: se aplica a la selección recordada en
+   * `textSel` o, si no hay, a todo el texto.
+   */
+  formatText(op: { toggle: 'bold' | 'italic' | 'underline' | 'strike' } | { set: Partial<Record<FmtKey, unknown>> } | { clear: true }): void {
+    const o = this.single;
+    if (!o || (o.type !== 'balloon' && o.type !== 'text')) return;
+    const len = o.text.length;
+    const sel = this.textSel;
+    const from = sel && sel.id === o.id && sel.to > sel.from ? Math.min(sel.from, len) : 0;
+    const to = sel && sel.id === o.id && sel.to > sel.from ? Math.min(sel.to, len) : len;
+    let spans: Span[];
+    if ('toggle' in op) spans = toggleFlag(o.spans, len, o, from, to, op.toggle);
+    else if ('set' in op) spans = applyFormat(o.spans, len, o, from, to, op.set);
+    else spans = applyFormat(o.spans, len, o, from, to, { bold: undefined, italic: undefined, underline: undefined, strike: undefined, color: undefined, fontFamily: undefined });
+    this.patch([o.id], { spans }, undefined);
+  }
+
+  /** Globos y textos que viven dentro de las viñetas dadas (se mueven con ellas). */
+  childrenOf(ids: ID[]): ID[] {
+    const set = new Set(ids);
+    return this.page.objects
+      .filter((o) => (o.type === 'balloon' || o.type === 'text') && o.parent && set.has(o.parent) && !set.has(o.id))
+      .map((o) => o.id);
+  }
+
+  /** Viñeta que se usará para «meter en viñeta»: la seleccionada o, si no, la de más arriba bajo el centro del objeto. */
+  private panelFor(o: PageObject): PanelObj | null {
+    const sel = this.selected.find((x): x is PanelObj => x.type === 'panel');
+    if (sel) return sel;
+    const cx = o.x + o.w / 2;
+    const cy = o.y + o.h / 2;
+    for (let i = this.page.objects.length - 1; i >= 0; i--) {
+      const p = this.page.objects[i];
+      if (p.type === 'panel' && cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h) return p;
+    }
+    return null;
+  }
+
+  private putable(): (BalloonObj | TextObj)[] {
+    return this.selected.filter((o): o is BalloonObj | TextObj => o.type === 'balloon' || o.type === 'text');
+  }
+
+  canPutInPanel(): boolean {
+    return this.putable().some((o) => !!this.panelFor(o) && this.panelFor(o)!.id !== o.parent);
+  }
+
+  canTakeOutOfPanel(): boolean {
+    return this.putable().some((o) => !!o.parent);
+  }
+
+  /** Mete los globos/textos seleccionados en una viñeta (solo cuando la persona lo pide). */
+  putInPanel(): void {
+    const pageId = this.page.id;
+    const changes: Change[] = [];
+    for (const o of this.putable()) {
+      const p = this.panelFor(o);
+      if (p && p.id !== o.parent) changes.push({ pageId, id: o.id, before: { parent: o.parent }, after: { parent: p.id } });
+    }
+    if (changes.length === 0) {
+      this.status = t('status.noPanelFor');
+      return;
+    }
+    this.history.run(this.changeCommand(t('hist.intoPanel'), changes));
+  }
+
+  takeOutOfPanel(): void {
+    const pageId = this.page.id;
+    const changes: Change[] = [];
+    for (const o of this.putable()) if (o.parent) changes.push({ pageId, id: o.id, before: { parent: o.parent }, after: { parent: undefined } });
+    if (changes.length > 0) this.history.run(this.changeCommand(t('hist.outOfPanel'), changes));
+  }
+
+  /** Globos seleccionados, en el orden en que se seleccionaron. */
+  private selectedBalloons(): BalloonObj[] {
+    return this.selection.map((id) => this.find(id)).filter((o): o is BalloonObj => !!o && o.type === 'balloon');
+  }
+
+  canLink(): boolean {
+    return this.selectedBalloons().length >= 2;
+  }
+
+  canUnlink(): boolean {
+    return this.selectedBalloons().some((b) => !!b.link);
+  }
+
+  /**
+   * Encadena los globos seleccionados en el orden de selección (1.º → 2.º → 3.º…):
+   * 'tail' hace que la cola de cada uno apunte al siguiente; 'merge' funde sus cuerpos.
+   */
+  linkBalloons(mode: 'tail' | 'merge'): void {
+    const bs = this.selectedBalloons();
+    if (bs.length < 2) return;
+    const pageId = this.page.id;
+    const changes: Change[] = [];
+    for (let i = 0; i < bs.length - 1; i++) {
+      const b = bs[i];
+      changes.push({ pageId, id: b.id, before: { link: plain(b.link) }, after: { link: { to: bs[i + 1].id, mode } } });
+    }
+    this.history.run(this.changeCommand(t('hist.link'), changes));
+  }
+
+  /** Quita el enlace de los globos seleccionados (y de los que apuntan a ellos). */
+  unlinkBalloons(): void {
+    const sel = new Set(this.selection);
+    const pageId = this.page.id;
+    const changes: Change[] = [];
+    for (const o of this.page.objects) {
+      if (o.type !== 'balloon' || !o.link) continue;
+      if (sel.has(o.id) || sel.has(o.link.to)) changes.push({ pageId, id: o.id, before: { link: plain(o.link) }, after: { link: undefined } });
+    }
+    if (changes.length > 0) this.history.run(this.changeCommand(t('hist.unlink'), changes));
   }
 
   /** ¿Hay algo que reflejar? Imágenes sueltas seleccionadas o, si no, la capa de imagen activa de una viñeta. */
@@ -893,6 +1180,14 @@ class Editor {
     const p: Patch = { shape };
     if (shape === 'poly') p.points = o.shape === 'ellipse' ? ellipsePoints(16) : unitSquare();
     this.patch([panelId], p);
+  }
+
+  /** Cambia el contorno de la viñeta por uno de arcos de nube (ajustado a su caja actual). */
+  panelToCloud(panelId: ID): void {
+    const o = this.panelById(panelId);
+    if (!o) return;
+    const px = scallopPoly(o.w / 2, o.h / 2, o.w / 2, o.h / 2, 5);
+    this.patch([panelId], { ...panelWithPoints(o, px), shape: 'poly' });
   }
 
   /** Inserta un vértice en la arista `edge` (entre `edge` y `edge + 1`), en px de la viñeta. */

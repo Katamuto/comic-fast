@@ -286,6 +286,8 @@
     top: 100%;
     left: 0;
     min-width: 20rem;
+    max-height: calc(100vh - 3.5rem);
+    overflow-y: auto;
     padding: 0.3077rem;
     background: var(--panel);
     border: 1px solid var(--border);

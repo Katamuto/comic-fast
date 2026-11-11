@@ -19,6 +19,9 @@
   import { imageEditor } from './lib/app/imageEditor.svelte';
   import ProgressDialog from './lib/components/ProgressDialog.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
+  import GridDialog from './lib/components/GridDialog.svelte';
+  import SplitDialog from './lib/components/SplitDialog.svelte';
+  import SelectPopup from './lib/components/SelectPopup.svelte';
   import NewDrawingDialog from './lib/components/NewDrawingDialog.svelte';
   import TemplateDialog from './lib/components/TemplateDialog.svelte';
   import GlobalsDialog from './lib/components/GlobalsDialog.svelte';
@@ -183,10 +186,13 @@
   {#if editor.showDownload}<DownloadDialog />{/if}
   {#if editor.showFonts}<FontDialog />{/if}
   {#if editor.showGlobals}<GlobalsDialog />{/if}
+  {#if editor.showGridDialog}<GridDialog />{/if}
+  {#if editor.showSplit}<SplitDialog />{/if}
   {#if editor.showTemplates}<TemplateDialog />{/if}
   {#if editor.showDistribute}<DistributeDialog />{/if}
   {#if editor.showReorg}<ReorganizeDialog />{/if}
   <ContextMenu />
+  <SelectPopup />
   {#if imageEditor.showNew}<NewDrawingDialog />{/if}
   {#if imageEditor.isOpen}<ImageEditor />{/if}
   <ProgressDialog />

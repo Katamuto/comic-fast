@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { balloonGeometry, tailFrame, TAIL_STYLES } from './balloon';
-import { cutPolygon, ellipseExitAngle, pointInPoly, polyBounds, rayHit, shapePoly, spanAt, type ShapeKind } from './balloonShapes';
+import { scallopPoly, cutPolygon, ellipseExitAngle, pointInPoly, polyBounds, rayHit, shapePoly, spanAt, type ShapeKind } from './balloonShapes';
 import { fitContourText } from './contourText';
 import { ellipsePoly } from './balloonShapes';
 import { cloneWithNewIds } from '../model/scale';
@@ -8,7 +8,7 @@ import { mergeGroups, renderPlan, withLinkedTail } from '../model/balloonLinks';
 import type { BalloonObj, Page, PageObject, TextStyle } from '../model/types';
 
 const base = { w: 300, h: 180, strokeWidth: 4, tailX: -60, tailY: 150 };
-const KINDS: ShapeKind[] = ['rounded', 'scallop', 'blob', 'angular', 'impact'];
+const KINDS: ShapeKind[] = ['rounded', 'scallop', 'blob', 'angular', 'impact', 'serrated'];
 
 describe('formas de globo nuevas', () => {
   for (const k of KINDS) {
@@ -27,7 +27,7 @@ describe('formas de globo nuevas', () => {
     });
   }
   it('los estilos con cola dibujan la cola y los demás no', () => {
-    for (const style of ['rounded', 'scallop', 'blob', 'angular'] as const) {
+    for (const style of ['rounded', 'scallop', 'blob', 'angular', 'serrated'] as const) {
       expect(TAIL_STYLES).toContain(style);
       const g = balloonGeometry({ ...base, style });
       expect(g.hasTail).toBe(true);
@@ -48,6 +48,17 @@ describe('formas de globo nuevas', () => {
     const cut = cutPolygon(poly, hit.s, 20);
     expect(Math.abs(cut.p1.y - 178)).toBeLessThan(1);
     expect(cut.body.length).toBeGreaterThan(5);
+  });
+});
+
+describe('viñeta de nube', () => {
+  it('menos pasos por arco da menos vértices y sigue dentro de la caja', () => {
+    const fine = scallopPoly(150, 90, 150, 90, 10);
+    const coarse = scallopPoly(150, 90, 150, 90, 5);
+    expect(coarse.length).toBeLessThan(fine.length);
+    const b = polyBounds(coarse);
+    expect(b.minX).toBeGreaterThanOrEqual(-0.5);
+    expect(b.maxX).toBeLessThanOrEqual(300.5);
   });
 });
 

@@ -82,6 +82,8 @@
     position: fixed;
     z-index: 300;
     min-width: 13rem;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
     padding: 0.3077rem;
     background: var(--panel);
     color: var(--text);

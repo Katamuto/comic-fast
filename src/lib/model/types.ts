@@ -200,6 +200,18 @@ export interface ImageObj extends Base {
   flipV?: boolean;
 }
 
+/** Formato de un tramo del texto de un globo o cuadro de texto: índices [from, to) sobre `text`. Lo no indicado se hereda del objeto. */
+export interface Span {
+  from: number;
+  to: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  color?: string;
+  fontFamily?: string;
+}
+
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 
 export interface TextStyle {
@@ -224,7 +236,8 @@ export type BalloonStyle =
   | 'scallop'
   | 'blob'
   | 'angular'
-  | 'impact';
+  | 'impact'
+  | 'serrated';
 
 export interface BalloonObj extends Base, TextStyle {
   type: 'balloon';
@@ -239,8 +252,15 @@ export interface BalloonObj extends Base, TextStyle {
   /** Origen de la cola, relativo al CENTRO del globo (sin rotar). Falta = el centro. */
   tailOx?: number;
   tailOy?: number;
+  /** Picos de sierra (estilo 'serrated'): largo y ancho como fracción del lado menor del globo. */
+  toothLen?: number;
+  toothWidth?: number;
   /** Margen (px) entre el texto y el contorno. Falta = el predeterminado. */
   textMargin?: number;
+  /** Formato por partes del texto (negrita, color, fuente…). */
+  spans?: Span[];
+  /** Viñeta que lo contiene (solo si la persona lo metió a propósito): se recorta a su forma y la acompaña al moverla. */
+  parent?: ID;
   /** Encadenado con otro globo de la misma página: la cola apunta a él o los cuerpos se funden. */
   link?: { to: ID; mode: 'tail' | 'merge' };
   text: string;
@@ -259,6 +279,10 @@ export interface TextObj extends Base, TextStyle {
   outlineWidth: number;
   /** Relleno con degradado (si existe, manda sobre `color`). */
   fill?: Fill;
+  /** Formato por partes del texto (negrita, color, fuente…). */
+  spans?: Span[];
+  /** Viñeta que lo contiene (solo si la persona lo metió a propósito). */
+  parent?: ID;
   /** Título u onomatopeya: los parámetros globales de tamaño de texto no les afectan. Falta = texto normal. */
   role?: 'title' | 'sfx';
 }

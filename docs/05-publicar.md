@@ -26,7 +26,7 @@ Prueba ahí (no solo en `npm run dev`): importar imágenes, exportar PNG y PDF, 
    ```bash
    git init
    git add .
-   git commit -m "Comic Fast 0.13.0"
+   git commit -m "Comic Fast 0.14.0"
    git branch -M main
    git remote add origin https://github.com/TU_USUARIO/comic-fast.git
    git push -u origin main
@@ -103,8 +103,8 @@ npm run tauri build
 | **Instaladores / paquetes** | `src-tauri/target/release/bundle/…` | Lo que sí repartes |
 
 Dentro de `bundle/`:
-- Windows: `msi/Comic Fast_0.13.0_x64_en-US.msi` y `nsis/Comic Fast_0.13.0_x64-setup.exe`
-- macOS: `dmg/Comic Fast_0.13.0_aarch64.dmg` y `macos/Comic Fast.app`
+- Windows: `msi/Comic Fast_0.14.0_x64_en-US.msi` y `nsis/Comic Fast_0.14.0_x64-setup.exe`
+- macOS: `dmg/Comic Fast_0.14.0_aarch64.dmg` y `macos/Comic Fast.app`
 - Linux: `deb/…​.deb`, `rpm/…​.rpm`, `appimage/…​.AppImage` (este último se ejecuta con doble clic, sin instalar)
 
 **Importante:** cada sistema operativo compila **solo para sí mismo** (en Windows obtienes los de Windows, etc.). Para tener los tres sin poseer los tres equipos, usa B.3.
@@ -115,8 +115,8 @@ Ya está el flujo `.github/workflows/build.yml`.
 2. Comprueba que la versión sea la misma en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`.
 3. Crea y sube una etiqueta:
    ```bash
-   git tag v0.13.0
-   git push origin v0.13.0
+   git tag v0.14.0
+   git push origin v0.14.0
    ```
 4. En GitHub → **Actions** verás la compilación (15–30 min). Al terminar, en **Releases** aparece un **borrador** con los instaladores de Windows, macOS (Apple Silicon e Intel) y Linux. Revísalo y pulsa **Publish release**.
 5. Enlaza esa página de descargas desde tu sitio web.
@@ -165,7 +165,7 @@ Abre la ejecución fallida (pestaña **Actions**), entra en el sistema que fall�
 | Error en `npm ci` («package.json and package-lock.json are not in sync») | Ejecuta `npm install` en tu equipo y sube el `package-lock.json` nuevo. |
 | Falla solo Linux, en `apt-get`/`pkg-config` (webkit2gtk, appindicator) | La lista de dependencias de `build.yml` es la oficial para Ubuntu 22.04; no cambies `ubuntu-22.04` por `ubuntu-latest` sin revisarla. |
 | Falla `npm test` | Es un fallo real de una prueba: corrígelo o quita el paso «Pruebas» de `build.yml`. |
-| `The tag/version ... doesn't match` o el release sale con otro número | La versión de `package.json`, `tauri.conf.json` y `Cargo.toml` debe ser la misma que la etiqueta (`v0.13.0` ↔ `0.13.0`). |
+| `The tag/version ... doesn't match` o el release sale con otro número | La versión de `package.json`, `tauri.conf.json` y `Cargo.toml` debe ser la misma que la etiqueta (`v0.14.0` ↔ `0.14.0`). |
 | macOS: «la app está dañada» al abrirla | Sin firma de Apple es normal: clic derecho → Abrir (o `xattr -cr "/Applications/Comic Fast.app"`). Para evitarlo hace falta una cuenta de desarrollador de Apple. |
 | Windows: aviso de SmartScreen | Sin certificado de firma de código es normal: «Más información → Ejecutar de todas formas». |
 

@@ -9,10 +9,11 @@
    * medio aparece la referencia del contenido de las páginas.
    * Los textos admiten {n} (número de página) y {total} (cuántas páginas hay).
    */
-  import type { Asset, Globals, ID, Page, PageObject } from '../model/types';
+  import type { Asset, Globals, ID, Page, PageObject, PanelObj } from '../model/types';
   import { applyGlobals, textForced } from '../model/globals';
   import { provideTextMode } from '../app/quality';
   import { pageTokens, styleSplit } from '../model/style';
+  import { shiftSpans } from '../render/richText';
   import { renderPlan, withLinkedTail } from '../model/balloonLinks';
   import { t } from '../i18n/index.svelte';
   import ObjectView from './ObjectView.svelte';
@@ -63,12 +64,19 @@
 
   /** Los textos de globos y cuadros de texto con {n} / {total} sustituidos. */
   const byId = $derived(new Map<ID, PageObject>(page.objects.map((o) => [o.id, o])));
+  /** Viñeta que contiene al objeto (solo si fue metido a propósito y aún existe). */
+  function parentPanel(o: PageObject): PanelObj | null {
+    if ((o.type !== 'balloon' && o.type !== 'text') || !o.parent) return null;
+    const p = byId.get(o.parent);
+    return p && p.type === 'panel' ? p : null;
+  }
   const plan = $derived(styleEdit ? [] : renderPlan(page.objects));
 
   function tok(o: PageObject): PageObject {
     if (o.type === 'balloon' && o.link?.mode === 'tail') o = withLinkedTail(o, byId);
     if ((o.type === 'text' || o.type === 'balloon') && o.text.includes('{')) {
-      o = { ...o, text: pageTokens(o.text, pageNo, pageCount) };
+      const text = pageTokens(o.text, pageNo, pageCount);
+      o = { ...o, text, spans: shiftSpans(o.spans, o.text, text) };
     }
     return applyGlobals(o, globals);
   }
@@ -109,7 +117,7 @@
     </g>
   {/if}
   {#each plan as item (`${item.obj.id}-${item.phase}`)}
-    <ObjectView obj={tok(item.obj)} {assets} {scope} {interactive} hideText={item.obj.id === editingId} phase={item.phase} />
+    <ObjectView obj={tok(item.obj)} {assets} {scope} {interactive} hideText={item.obj.id === editingId} phase={item.phase} clipTo={parentPanel(item.obj)} />
   {/each}
   {#if style}
     <g pointer-events="none">

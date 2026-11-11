@@ -31,7 +31,11 @@
     const page: Page = {
       id: 'preview',
       background: 'none',
-      objects: objs.map((o, i) => ({ ...o, id: `pv${i}` }) as PageObject)
+      objects: objs.map((o, i) => {
+        const copy = { ...o, id: `pv${i}` } as PageObject;
+        if (copy.type === 'balloon' && copy.link?.to.startsWith('@')) copy.link = { ...copy.link, to: `pv${copy.link.to.slice(1)}` };
+        return copy;
+      })
     };
     return { page, viewBox: `${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}` };
   });

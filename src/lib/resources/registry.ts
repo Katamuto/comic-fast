@@ -9,6 +9,7 @@
  * ítems en estas mismas listas, sin tocar el resto del código.
  */
 import type { BalloonObj, LayerInit, ObjectInit, Pt, TextObj } from '../model/types';
+import { scallopPoly } from '../render/balloonShapes';
 import { balloon, gradientLayer, panel, pattern, patternLayer, polyPanel, textBox } from '../model/defaults';
 import './patternFiles'; // registra las tramas SVG y texturas de imagen de las carpetas
 import { listPatterns, listTextures, patternClass } from '../render/patterns';
@@ -113,6 +114,7 @@ const balloons: ResourceItem[] = [
   balloonItem({ id: 'scallop', label: 'Nube suave', hr: 0.62, tail: [-0.22, 0.85], over: { style: 'scallop', text: 'Pues…' } }),
   balloonItem({ id: 'blob', label: 'Óvalo irregular', hr: 0.6, tail: [0.22, 0.85], over: { style: 'blob', text: 'Bueno…' } }),
   balloonItem({ id: 'angular', label: 'Óvalo con esquinas', hr: 0.6, tail: [-0.22, 0.85], over: { style: 'angular', text: '¡Oye!' } }),
+  balloonItem({ id: 'serrated', label: 'Redondo de sierra', hr: 0.65, tail: [-0.22, 0.85], over: { style: 'serrated', text: '¡Cuidado!' } }),
   balloonItem({
     id: 'impact',
     label: 'Impacto',
@@ -130,8 +132,21 @@ const balloons: ResourceItem[] = [
       const h = w * 0.55;
       const common = { fontSize: Math.round(28 * u), strokeWidth: Math.max(2, Math.round(4 * u)) };
       const a = balloon({ x: ctx.cx - w * 0.95, y: ctx.cy - h * 0.9, w, h }, { ...common, style: 'speech', text: 'Primero…', tailX: -w * 0.2, tailY: h * 0.9 });
-      // La cola del segundo apunta al primero (para enlazarlos de verdad: Inspector → Encadenar).
-      const b = balloon({ x: ctx.cx - w * 0.1, y: ctx.cy - h * 0.1, w, h }, { ...common, style: 'speech', text: '…y luego.', tailX: -w * 0.62, tailY: -h * 0.62 });
+      // La cola del segundo apunta al primero: enlace de cola («@0» = el primer objeto de este lote).
+      const b = balloon({ x: ctx.cx - w * 0.1, y: ctx.cy - h * 0.1, w, h }, { ...common, style: 'speech', text: '…y luego.', tailX: -w * 0.62, tailY: -h * 0.62, link: { to: '@0', mode: 'tail' } });
+      return [a, b];
+    }
+  },
+  {
+    id: 'merged',
+    label: 'Globos fusionados',
+    build: (ctx) => {
+      const u = ctx.pageW / 1000;
+      const w = 240 * u;
+      const h = w * 0.62;
+      const common = { fontSize: Math.round(28 * u), strokeWidth: Math.max(2, Math.round(4 * u)) };
+      const a = balloon({ x: ctx.cx - w * 0.85, y: ctx.cy - h * 0.8, w, h }, { ...common, style: 'speech', text: 'Primero…', tailX: -w * 0.3, tailY: h * 0.9 });
+      const b = balloon({ x: ctx.cx - w * 0.15, y: ctx.cy - h * 0.2, w, h }, { ...common, style: 'speech', text: '…y luego.', tailX: 0, tailY: 0, link: { to: '@0', mode: 'merge' } });
       return [a, b];
     }
   },
@@ -220,6 +235,22 @@ function shapePanel(id: string, label: string, fw: number, fh: number, shape: 'e
   };
 }
 
+/** Viñeta con el borde en arcos de nube (la forma se genera según el tamaño). */
+function cloudPanel(id: string, label: string, fw: number, fh: number): ResourceItem {
+  return {
+    id,
+    label,
+    group: 'Formas',
+    build: (ctx) => {
+      const w = ctx.pageW * fw;
+      const h = ctx.pageH * fh;
+      const x0 = ctx.cx - w / 2;
+      const y0 = ctx.cy - h / 2;
+      return [polyPanel(scallopPoly(w / 2, h / 2, w / 2, h / 2, 5).map((p) => ({ x: x0 + p.x, y: y0 + p.y })), { strokeWidth: strokeFor(ctx) })];
+    }
+  };
+}
+
 /** Páginas con viñetas apiladas separadas por cortes en diagonal. */
 function diagLayout(id: string, label: string, n: number, slant: number): ResourceItem {
   return {
@@ -276,6 +307,7 @@ const panels: ResourceItem[] = [
   singlePanel('p-s', 'Viñeta cuadrada', 0.5, 0.33),
   diagLayout('l-diag2', 'Diagonal × 2', 2, 0.22),
   diagLayout('l-diag3', 'Diagonal × 3', 3, 0.16),
+  cloudPanel('s-cloud', 'Viñeta de nube', 0.55, 0.3),
   shapePanel('s-circle', 'Viñeta redonda', 0.42, 0.273, 'ellipse'),
   shapePanel('s-ellipse', 'Elipse', 0.6, 0.26, 'ellipse'),
   shapePanel('s-para', 'Paralelogramo', 0.6, 0.26, [

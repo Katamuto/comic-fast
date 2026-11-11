@@ -5,7 +5,7 @@
  */
 import type { TextStyle } from '../model/types';
 import { polyBounds, spanAt, type Pt } from './balloonShapes';
-import { fontCss, wrapParagraphs, type FittedText, type Measure } from './textLayout';
+import { fontCss, wrapParagraphs, type FittedText, type Measure, type RichFn } from './textLayout';
 
 export const DEFAULT_TEXT_MARGIN = 6;
 
@@ -53,7 +53,8 @@ export function fitContourText(
   measure: Measure,
   lineHeightRatio = 1.2,
   minSize = 8,
-  force = false
+  force = false,
+  rich?: RichFn
 ): FittedText | null {
   const bb = polyBounds(poly);
   const height = bb.maxY - bb.minY - margin;
@@ -65,9 +66,10 @@ export function fitContourText(
     for (let n = 1; n <= maxN; n++) {
       const bands = layoutBands(poly, n, lh, margin);
       if (!bands) continue;
-      const { lines, last } = wrapParagraphs(text, (i) => bands[Math.min(i, n - 1)].w, width);
+      const wr = rich ? rich(size, (i) => bands[Math.min(i, n - 1)].w) : null;
+      const { lines, last } = wr ?? wrapParagraphs(text, (i) => bands[Math.min(i, n - 1)].w, width);
       if (lines.length <= n) {
-        return { lines, last, fontSize: size, lineHeight: lh, lineRects: bands.slice(0, lines.length), overflow: false };
+        return { lines, last, fontSize: size, lineHeight: lh, lineRects: bands.slice(0, lines.length), overflow: false, words: wr?.words, lineWidths: wr?.widths };
       }
     }
     if (size <= minSize || force) {
@@ -76,10 +78,11 @@ export function fitContourText(
       const n = Math.max(1, maxN);
       const bands = layoutBands(poly, n, lh, margin);
       if (!bands) return null;
-      const { lines, last } = wrapParagraphs(text, (i) => bands[Math.min(i, n - 1)].w, width);
+      const wr = rich ? rich(size, (i) => bands[Math.min(i, n - 1)].w) : null;
+      const { lines, last } = wr ?? wrapParagraphs(text, (i) => bands[Math.min(i, n - 1)].w, width);
       const shown = lines.slice(0, Math.max(lines.length, 1));
       const rects: Rect[] = shown.map((_, i) => bands[Math.min(i, n - 1)]);
-      return { lines: shown, last, fontSize: size, lineHeight: lh, lineRects: rects.map((r, i) => ({ ...r, y: bands[0].y + i * lh })), overflow: lines.length > n };
+      return { lines: shown, last, fontSize: size, lineHeight: lh, lineRects: rects.map((r, i) => ({ ...r, y: bands[0].y + i * lh })), overflow: lines.length > n, words: wr?.words, lineWidths: wr?.widths };
     }
     size = Math.max(minSize, Math.floor(size * 0.94 * 10) / 10);
   }

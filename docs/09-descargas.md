@@ -15,7 +15,7 @@ La versión web puede ofrecer los instaladores de escritorio. El botón **«Obte
       "id": "windows",
       "name": { "es": "Windows (64 bits)", "en": "Windows (64-bit)", "ja": "Windows (64ビット)" },
       "note": { "es": "Windows 10 u 11", "en": "Windows 10 or 11" },
-      "file": "Comic-Fast_0.13.0_x64-setup.exe",
+      "file": "Comic-Fast_0.14.0_x64-setup.exe",
       "icon": "windows.svg"
     }
   ]
@@ -50,7 +50,7 @@ Solo se aceptan direcciones `http(s)`; `javascript:`, `data:` y similares se des
 **Límite:** Cloudflare Pages no admite archivos de más de **25 MiB**. Los instaladores `.exe`, `.msi` y `.dmg` suelen caber; un `.AppImage` puede no caber. En ese caso sube el archivo a **GitHub Releases** y pon su dirección en `file`:
 
 ```json
-{ "name": "Linux (AppImage)", "file": "https://github.com/TU_USUARIO/comic-fast/releases/download/v0.13.0/Comic-Fast_0.13.0_amd64.AppImage" }
+{ "name": "Linux (AppImage)", "file": "https://github.com/TU_USUARIO/comic-fast/releases/download/v0.14.0/Comic-Fast_0.14.0_amd64.AppImage" }
 ```
 
 **No se cuelan en la app de escritorio:** al compilar con Tauri, `vite.config.ts` borra `dist/descargas`, `dist/avisos.json` y `dist/_headers` del paquete (solo sirven en la web), de modo que los instaladores de `public/descargas/` no engordan la propia app.

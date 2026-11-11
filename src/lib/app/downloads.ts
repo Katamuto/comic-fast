@@ -9,7 +9,7 @@
  *     "downloads": [
  *       { "id": "windows",
  *         "name": { "es": "Windows (64 bits)", "en": "Windows (64-bit)" },
- *         "file": "Comic-Fast_0.13.0_x64-setup.exe",
+ *         "file": "Comic-Fast_0.14.0_x64-setup.exe",
  *         "icon": "windows.svg",
  *         "note": { "es": "Windows 10 u 11", "en": "Windows 10 or 11" } }
  *     ]

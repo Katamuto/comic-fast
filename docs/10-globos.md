@@ -188,6 +188,14 @@ Con curvas de Inkscape (comandos `c`, `s`, `q`, `a`…) las coordenadas relativa
 - **Origen de la cola**: `tailOx/tailOy` (relativos al centro). La cola sale por donde el rayo origen→punta cruza el contorno.
 - **Encadenado** (`model/balloonLinks.ts`): `link: { to, mode }`. `tail` calcula la punta sobre la elipse del otro globo; `merge` dibuja los globos del grupo en tres pasadas (borde doble, relleno, texto) para que el borde rodee solo la silueta unida.
 
+## 7. Novedades de 0.14
+
+- `serrated` (redondo de sierra): `serratedPoly` en `render/balloonShapes.ts`; picos de largo/ancho variables con `hash01`, controlados por `toothLen`/`toothWidth`.
+- `parent` (globo o texto dentro de una viñeta): solo se asigna con «Meter en viñeta»; `ObjectView` recibe `clipTo`.
+- Formato por partes: `spans` (rangos sobre `text`), `render/richText.ts`; `store.patch` reubica los spans al cambiar el texto.
+- Un recurso puede enlazar sus objetos con `link: { to: '@0' }` (índice dentro del lote); `addObjects` lo convierte en ids.
+- Viñetas: `model/polyBool.ts` (booleanas y corte) y `model/panelOps.ts`.
+
 ## Resumen de archivos
 
 | Qué quieres | Tocas |
