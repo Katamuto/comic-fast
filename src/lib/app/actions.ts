@@ -69,6 +69,14 @@ export const actions: Action[] = [
   },
   { id: 'file.exportPng', label: () => t('act.file.exportPng'), keys: ['Mod+E'], run: () => files.exportCurrentPng() },
   { id: 'file.exportPdf', label: () => t('act.file.exportPdf'), keys: ['Mod+Shift+E'], run: () => files.exportAllPdf() },
+  {
+    id: 'file.exportPrint',
+    label: () => t('act.file.exportPrint'),
+    keys: ['Mod+Alt+E'],
+    run: () => {
+      editor.showExport = true;
+    }
+  },
   { id: 'file.exportCbz', label: () => t('act.file.exportCbz'), run: () => files.exportAllCbz() },
   { id: 'file.quit', label: () => t('act.file.quit'), keys: ['Mod+Q'], run: () => void quitApp() },
 
@@ -163,6 +171,34 @@ export const actions: Action[] = [
     enabled: () => editor.pageIndex < editor.doc.pages.length - 1
   },
   ...presetActions,
+  {
+    id: 'panel.gutters',
+    label: () => t('act.panel.gutters'),
+    run: () => {
+      const n = editor.normalizeGutters();
+      editor.status = n > 0 ? t('status.gutters', { n }) : t('status.guttersNone');
+    },
+    enabled: () => !editor.styleMode
+  },
+  {
+    id: 'page.layout',
+    label: () => t('act.page.layout'),
+    keys: ['Mod+Shift+L'],
+    run: () => {
+      editor.showLayout = true;
+    }
+  },
+  {
+    id: 'view.spread',
+    label: () => t('act.view.spread'),
+    keys: ['Mod+Shift+D'],
+    enabled: () => editor.layout.book && editor.partner !== null,
+    run: () => {
+      editor.spread = !editor.spread;
+      setTimeout(() => editor.fitView?.(), 0);
+    },
+    checked: () => editor.spread && editor.partner !== null
+  },
   {
     id: 'page.size.custom',
     label: () => t('act.page.size.custom'),
@@ -336,7 +372,7 @@ export const menus: Menu[] = [
     label: 'menu.file',
     entries: [
       'file.new', 'file.newFromTemplate', 'file.open', '-', 'file.save', 'file.saveAs', '-', 'file.importImages', 'file.newDrawing', 'file.fonts', '-',
-      'file.exportPng', 'file.exportPdf', 'file.exportCbz', ...(isTauri ? ['-', 'file.quit'] : [])
+      'file.exportPng', 'file.exportPdf', 'file.exportCbz', 'file.exportPrint', ...(isTauri ? ['-', 'file.quit'] : [])
     ]
   },
   {
@@ -345,7 +381,7 @@ export const menus: Menu[] = [
       'edit.undo', 'edit.redo', '-', 'edit.cut', 'edit.copy', 'edit.paste', 'edit.duplicate', 'edit.delete', 'edit.selectAll', '-',
       'edit.front', 'edit.forward', 'edit.backward', 'edit.back', '-',
       'edit.lock', '-',
-      'edit.layerMode', 'panel.toPolygon', 'panel.cloud', 'edit.editImage', 'edit.flipH', 'edit.flipV', 'edit.distribute', '-', 'edit.linkTail', 'edit.linkMerge', 'edit.unlink', '-', 'edit.intoPanel', 'edit.outOfPanel', '-', 'panel.cut', 'panel.split', 'panel.union', 'panel.intersect', 'panel.difference', 'panel.exclude'
+      'edit.layerMode', 'panel.toPolygon', 'panel.cloud', 'edit.editImage', 'edit.flipH', 'edit.flipV', 'edit.distribute', '-', 'edit.linkTail', 'edit.linkMerge', 'edit.unlink', '-', 'edit.intoPanel', 'edit.outOfPanel', '-', 'panel.cut', 'panel.split', 'panel.gutters', 'panel.union', 'panel.intersect', 'panel.difference', 'panel.exclude'
     ]
   },
   {
@@ -355,10 +391,10 @@ export const menus: Menu[] = [
       'page.noStyle', 'page.noNumber', 'page.noGlobals', 'doc.globals', '-',
       ...presetActions.map((a) => a.id),
       '-',
-      'page.size.custom'
+      'page.size.custom', 'page.layout'
     ]
   },
-  { label: 'menu.view', entries: ['view.styleMode', '-', 'view.zoomIn', 'view.zoomOut', 'view.zoom100', 'view.fit', '-', 'view.grid', 'view.snap', 'view.gridSettings', '-', ...(isTauri ? [] : ['view.fullscreen']), 'view.theme', 'view.textBigger', 'view.textSmaller', 'view.textReset'] },
+  { label: 'menu.view', entries: ['view.styleMode', 'view.spread', '-', 'view.zoomIn', 'view.zoomOut', 'view.zoom100', 'view.fit', '-', 'view.grid', 'view.snap', 'view.gridSettings', '-', ...(isTauri ? [] : ['view.fullscreen']), 'view.theme', 'view.textBigger', 'view.textSmaller', 'view.textReset'] },
   { label: 'menu.help', entries: ['help.guide', 'help.welcome', '-', 'help.eula', 'help.about', ...(DONATE_URL ? ['-', 'help.donate'] : [])] }
 ];
 
@@ -432,7 +468,7 @@ function isTextEntry(t: HTMLElement | null): boolean {
 /** Manejador global de teclado: atajos del registro + teclas del lienzo. */
 export function handleKeydown(e: KeyboardEvent): void {
   // Con un diálogo abierto, los atajos del editor no deben actuar sobre la página.
-  if (editor.showSplash || editor.showAbout || editor.showPageSize || editor.showHelp || editor.showEula || editor.showNotice || editor.showDownload || editor.showFonts || editor.showGlobals || editor.showGridDialog || editor.showSplit || editor.showTemplates || editor.showReorg || editor.showDistribute || imageEditor.showNew || imageEditor.isOpen) return;
+  if (editor.showSplash || editor.showAbout || editor.showPageSize || editor.showHelp || editor.showEula || editor.showNotice || editor.showDownload || editor.showFonts || editor.showGlobals || editor.showGridDialog || editor.showLayout || editor.showExport || editor.showSplit || editor.showTemplates || editor.showReorg || editor.showDistribute || imageEditor.showNew || imageEditor.isOpen) return;
   const target = e.target as HTMLElement | null;
   const typing = isTextEntry(target);
 

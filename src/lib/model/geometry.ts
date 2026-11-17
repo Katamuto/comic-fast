@@ -167,8 +167,8 @@ export function fitInside(w: number, h: number, maxW: number, maxH: number): { w
 }
 
 /** ¿El objeto (con su giro) queda por completo fuera de la página? Entonces no se vería. */
-export function outsidePage(o: Rotated, pageW: number, pageH: number): boolean {
-  return !rectsIntersect(aabb(o), { x: 0, y: 0, w: pageW, h: pageH });
+export function outsidePage(o: Rotated, pageW: number, pageH: number, ox = 0, spanW = pageW): boolean {
+  return !rectsIntersect(aabb(o), { x: ox, y: 0, w: spanW, h: pageH });
 }
 
 /**

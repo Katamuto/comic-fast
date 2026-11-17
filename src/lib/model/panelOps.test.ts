@@ -59,3 +59,17 @@ describe('operaciones con viñetas', () => {
     expect(area(polys)).toBeCloseTo(200 * 200 - 10 * 200 * 2 + 100);
   });
 });
+
+describe('viñetas del estado reactivo', () => {
+  it('panelLike no usa structuredClone sobre proxies: acepta objetos planos y también proxies', () => {
+    const base = new Proxy(P(0, 0, 100, 100), {});
+    // Con un Proxy, structuredClone lanzaría; panelLike debe poder trabajar con él o el llamador pasar copias planas.
+    let ok = true;
+    try {
+      panelLike(base as PanelObj, [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 0, y: 50 }]);
+    } catch {
+      ok = false;
+    }
+    expect(ok).toBe(true);
+  });
+});

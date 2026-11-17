@@ -8,7 +8,8 @@
   import { contextMenu } from '../app/contextMenu.svelte';
   import { pointerDrag } from '../app/resourceDrag.svelte';
   import type { Page } from '../model/types';
-  import { pageInfo } from '../model/style';
+  import { pageInfo, pageSpill } from '../model/style';
+  import { pageSide, resolveLayout } from '../model/layout';
   import { pageView } from '../app/viewMode.svelte';
 
   /** Interfaz móvil: sin botones propios (los pone el panel) y, con el teléfono en vertical, en forma de carrusel horizontal. */
@@ -41,7 +42,7 @@
     e.preventDefault();
     e.stopPropagation();
     if (i !== undefined) editor.gotoPage(i);
-    contextMenu.show(e.clientX, e.clientY, actionEntries(['page.add', 'page.delete', '-', 'page.noStyle', 'page.noNumber', 'page.noGlobals', 'page.reorganize']));
+    contextMenu.show(e.clientX, e.clientY, actionEntries(['page.add', 'page.duplicate', 'page.delete', '-', 'page.noStyle', 'page.noNumber', 'page.noGlobals', 'page.reorganize']));
   }
 
   /** Índice de la miniatura que hay bajo un elemento (para reordenar arrastrando). */
@@ -97,9 +98,12 @@
             pageNo={info.pageNo}
             pageCount={info.pageCount}
             globals={info.globals}
+            side={pageSide(resolveLayout(editor.doc.layout), i)}
+            spill={pageSpill(editor.doc, i)}
           />
         </div>
         <span class="num">{i + 1}</span>
+        {#if editor.layout.book}<span class="side" title={pageSide(editor.layout, i) === 'left' ? t('layout.left') : t('layout.right')}>{pageSide(editor.layout, i) === 'left' ? t('layout.leftShort') : t('layout.rightShort')}</span>{/if}
         <span class="label">{t('pages.n', { n: i + 1 })}</span>
       </div>
     {/each}
@@ -253,5 +257,17 @@
     background: var(--panel-2);
     border: 1px solid var(--border);
     border-radius: 0.3077rem;
+  }
+  .side {
+    position: absolute;
+    right: 0.3rem;
+    top: 0.3rem;
+    padding: 0 0.35rem;
+    border-radius: 0.6rem;
+    background: var(--sel);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    pointer-events: none;
   }
 </style>

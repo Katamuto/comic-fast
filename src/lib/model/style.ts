@@ -10,6 +10,8 @@
  * Los textos aceptan {n} (número de la página) y {total} (cuántas páginas hay).
  */
 import { CONTENT_REF, reorderIds, type ReorderMode } from './order';
+import { aabb } from './geometry';
+import { pageSide, partnerIndex, resolveLayout, type Layout } from './layout';
 import type { Globals, ID, Page, PageObject } from './types';
 
 /** Objetos de estilo que van por debajo y por encima del contenido, cada grupo en su orden. */
@@ -76,4 +78,36 @@ export function pageInfo(
     pageCount: Math.max(1, counted),
     globals: page && !page.noGlobals ? (doc.globals ?? null) : null
   };
+}
+
+/** Contenido de la página vecina que se mete en la actual (ver PageContent): dx = desplazamiento de la vecina. */
+export interface Spill {
+  page: Page;
+  dx: number;
+  pageNo: number | null;
+  pageCount: number;
+  globals: Globals | null;
+}
+
+/**
+ * Lo que la vecina de la doble página aporta a la página `index`: solo si algún objeto suyo
+ * invade esta página (en caso contrario, null, para no dibujarla dos veces).
+ */
+export function pageSpill(
+  doc: { pages: Page[]; style?: Page; globals?: Globals; pageW: number; pageH: number; layout?: Partial<Layout> },
+  index: number
+): Spill | null {
+  const l = resolveLayout(doc.layout);
+  const p = partnerIndex(l, index, doc.pages.length);
+  if (p === null) return null;
+  const dx = pageSide(l, p) === 'right' ? doc.pageW : -doc.pageW;
+  const page = doc.pages[p];
+  const hits = page.objects.some((o) => {
+    const b = aabb(o);
+    const x1 = b.x + dx;
+    return x1 < doc.pageW && x1 + b.w > 0 && b.y < doc.pageH && b.y + b.h > 0;
+  });
+  if (!hits) return null;
+  const info = pageInfo(doc, p);
+  return { page, dx, pageNo: info.pageNo, pageCount: info.pageCount, globals: info.globals };
 }

@@ -1,5 +1,28 @@
 # Cambios
 
+## 0.15.0
+
+**Nuevo: maquetación profesional**
+- **Maquetación** (Página → Maquetación…, Ctrl+Mayús+L): PPI de salida (72–1200, antes fijo a 300 efectivos), **márgenes por lado** (arriba, abajo, interior/exterior), **sangrado**, **canal estándar** entre viñetas y **modo libro**. Medidas en mm/cm/in.
+- **Cuadrícula relativa al área de márgenes** y límite de colocación: lo que se mueve, redimensiona, crea o suelta no sale de los márgenes (opción desactivable; la página de estilo no tiene límite). Guías de margen en el lienzo.
+- **Libro y doble página**: cada página sabe si es izquierda o derecha (insignia en la lista), los márgenes interior/exterior se espejan, y **Ver → Doble página** muestra la vecina para diseñar arte que cruza el lomo (un clic en la vecina la activa). El arte que invade la página vecina se dibuja en ella al exportar.
+- **Estilo par/impar**: los objetos de la página de estilo pueden mostrarse solo en páginas izquierdas o derechas («Mostrar en»), y un botón añade el número de página en la esquina exterior.
+- **Canales**: arrastrar la separación entre viñetas rectangulares redimensiona las de ambos lados a la vez (Alt: sin escalar el contenido); «Igualar canales entre viñetas» las deja al canal estándar; Dividir y Cortar usan el canal estándar por omisión.
+- **Exportar para imprenta** (Archivo → Exportar para imprenta…): PDF CMYK (TrimBox/BleedBox, marcas de corte opcionales, imagen sin pérdida) o TIFF CMYK por página (ZIP); límite de tinta total, negro con GCR y grises solo en K. PNG/PDF/CBZ respetan el PPI (el PNG lo lleva incrustado) y pueden incluir sangrado.
+- **Paneles laterales redimensionables** por el borde (también la altura del Inspector; doble clic restablece; teclado con flechas) y **Inspector rediseñado** en secciones plegables más compactas.
+
+**Limitaciones**
+- La conversión a CMYK es matemática, sin perfil ICC: los colores muy saturados salen más apagados y el PDF no es PDF/X certificado. Pide una prueba a la imprenta.
+- PPI muy altos en páginas grandes se limitan al tamaño máximo de lienzo del navegador (se avisa).
+- Las traducciones nuevas (no españolas) son automáticas y necesitan revisión nativa.
+
+## 0.14.1
+
+**Arreglado**
+- Las operaciones con viñetas (unir, intersección, diferencia, excluir, cortar y dividir) no hacían nada: copiaban la viñeta con `structuredClone`, que falla con los objetos del estado reactivo. Ahora usan copias planas.
+- «Duplicar página» aparece en el menú contextual de la lista de páginas.
+
+
 ## 0.14.0
 
 **Nuevo**

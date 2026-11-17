@@ -4,7 +4,7 @@
   import { editor } from '../model/store.svelte';
   import { pickUrl } from '../imageedit/proxy';
   import { applyGlobals, textForced } from '../model/globals';
-  import { pageInfo } from '../model/style';
+  import { pageInfo, pageSpill } from '../model/style';
   import { resourceDrag, type DragPayload } from '../app/resourceDrag.svelte';
   import { fileDrop } from '../app/fileDrop';
   import { importDroppedFiles } from '../io/fileActions';
@@ -20,7 +20,6 @@
     rectsIntersect,
     resizeBox,
     scaleLayers,
-    snapTo,
     toLocal,
     toPage,
     type Point,
@@ -35,7 +34,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   import { gradientGuides, moveGuide } from '../render/paint';
   import { parseColor } from '../render/color';
   import { contextMenu } from '../app/contextMenu.svelte';
-  import { gridLines } from '../model/grid';
+  import { contentRect } from '../model/layout';
+  import { moveGutter, type Gutter, type RectLike } from '../model/gutters';
   import { actionEntries, contextEntries } from '../app/actions';
   import { fontState } from '../render/fonts.svelte';
   import { familyCss } from '../render/textLayout';
@@ -62,7 +62,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   type Dir = -1 | 0 | 1;
   type Drag =
     | { kind: 'cut'; a: Point; b: Point }
-    | (PatchDrag & { kind: 'move'; start: Point; ids: ID[]; origin: Point })
+    | (PatchDrag & { kind: 'move'; start: Point; ids: ID[]; origin: Point; box: Box })
+    | (PatchDrag & { kind: 'gutter'; g: Gutter; rects: RectLike[]; start: Point })
     | (PatchDrag & { kind: 'resize'; id: ID; hx: Dir; hy: Dir; orig: Rotated })
     | (PatchDrag & { kind: 'rotate'; id: ID; center: Point; startAngle: number; origRot: number })
     | (PatchDrag & { kind: 'tail'; id: ID })
@@ -150,7 +151,18 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     return { a, b, r: Math.hypot(b.x - a.x, b.y - a.y), radial: tg.g.kind === 'radial', c1: parseColor(tg.g.c1).hex, c2: parseColor(tg.g.c2).hex };
   });
   /** Tirador de curvatura de la cola del globo seleccionado. */
-  const gridV = $derived(editor.showGrid ? gridLines(editor.doc.pageW, editor.doc.pageH, editor.grid) : { x: [], y: [] });
+  const gridV = $derived.by(() => {
+    if (!editor.showGrid) return { x: [], y: [] };
+    const a = editor.area;
+    const step = editor.gridSize;
+    const sub = Math.max(1, editor.grid.sub);
+    const axis = (origin: number, lo: number, hi: number) => {
+      const out: { at: number; major: boolean }[] = [];
+      for (let i = Math.ceil((lo - origin) / step - 1e-6); i <= Math.floor((hi - origin) / step + 1e-6); i++) out.push({ at: origin + i * step, major: ((i % sub) + sub) % sub === 0 });
+      return out;
+    };
+    return { x: axis(a.x, viewX, viewX + viewW), y: axis(a.y, 0, editor.doc.pageH) };
+  });
   const widthPt = $derived(single && single.type === 'balloon' && showTail ? tailWidthHandle(single) : null);
   const curvePt = $derived(single && single.type === 'balloon' && showTail ? curveHandle(single) : null);
   const polyPx = $derived(
@@ -160,6 +172,38 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
 
   /** Página de estilo, número y total que corresponden a la página actual (según lo que excluya). */
   const info = $derived(pageInfo(editor.doc, editor.pageIndex));
+  /** Canales entre viñetas rectangulares (se arrastran para redimensionar las dos a la vez). */
+  const gutters = $derived.by(() => {
+    if (editor.cutMode || editor.editingId || editor.layerMode) return [];
+    void editor.page.objects.length; // dependencia explícita
+    return editor.gutters();
+  });
+  const spill = $derived(editor.styleMode ? null : pageSpill(editor.doc, editor.pageIndex));
+  const pageW = $derived(editor.doc.pageW);
+  const pageH = $derived(editor.doc.pageH);
+  /** Doble página: la vecina se dibuja al lado; `ox` es el origen del visor (la página activa conserva sus coordenadas). */
+  const sp = $derived.by(() => {
+    if (!editor.spreadOn || editor.partner === null) return null;
+    const left = editor.side === 'left';
+    const pi = editor.partner;
+    const pinfo = pageInfo(editor.doc, pi);
+    return { ox: left ? 0 : -pageW, px: left ? pageW : -pageW, pi, pinfo, pside: left ? ('right' as const) : ('left' as const) };
+  });
+  const viewW = $derived(sp ? pageW * 2 : pageW);
+  const viewX = $derived(sp ? sp.ox : 0);
+  /** Guías de márgenes de cada página visible. */
+  const guides = $derived.by(() => {
+    const out: { x: number; y: number; w: number; h: number }[] = [];
+    const l = editor.layout;
+    const m = l.margins;
+    if (m.top + m.bottom + m.inner + m.outer <= 0) return out;
+    out.push(editor.area);
+    if (sp) {
+      const r = contentRect(l, pageW, pageH, sp.pside);
+      out.push({ ...r, x: r.x + sp.px });
+    }
+    return out;
+  });
 
   const editingObj = $derived.by(() => {
     const id = editor.editingId;
@@ -183,9 +227,21 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     `rotate(${o.rotation} ${o.x + o.w / 2} ${o.y + o.h / 2}) translate(${o.x} ${o.y})`;
 
   // --- Utilidades ------------------------------------------------------------
+  /** Caja que envuelve a los objetos indicados (sin girar el resultado). */
+  function unionBox(ids: ID[]): Box {
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const id of ids) {
+      const o = editor.find(id);
+      if (!o) continue;
+      const b = aabb(o);
+      x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.w); y2 = Math.max(y2, b.y + b.h);
+    }
+    return x1 > x2 ? { x: 0, y: 0, w: 0, h: 0 } : { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
   function toPagePoint(e: { clientX: number; clientY: number }): Point {
     const r = sheet!.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / editor.zoom, y: (e.clientY - r.top) / editor.zoom };
+    return { x: (e.clientX - r.left) / editor.zoom + viewX, y: (e.clientY - r.top) / editor.zoom };
   }
 
   /** Copia plana de un valor (los objetos y arrays del estado son proxies). */
@@ -318,6 +374,26 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     const target = e.target as Element;
     if (target.closest('.edit-box')) return; // clic dentro del cuadro de texto
     if (editor.editingId) editor.stopEditing();
+    const gEl = target.closest('[data-gutter]');
+    if (gEl && !e.altKey && e.button === 0) {
+      const g = gutters[Number(gEl.getAttribute('data-gutter'))];
+      if (g) {
+        const rects = editor.gutterRects();
+        const ids = [...g.a, ...g.b];
+        const keys = ['x', 'y', 'w', 'h', 'layers'];
+        drag = { kind: 'gutter', g, rects, start: toPagePoint(e), label: t('drag.gutter'), keys, before: snapshotOf(ids, keys) };
+        editor.select(ids);
+        capture(e);
+        e.preventDefault();
+        return;
+      }
+    }
+    // Doble página: un clic sobre la página vecina la convierte en la activa.
+    const partner = target.closest('[data-partner]');
+    if (partner) {
+      editor.gotoPage(Number(partner.getAttribute('data-partner')));
+      return;
+    }
 
     if (e.pointerType === 'touch') {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -505,6 +581,7 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
           start: p,
           ids,
           origin: { x: o.x, y: o.y },
+          box: unionBox(ids),
           label: t('drag.move'),
           keys: ['x', 'y'],
           before: snapshotOf(ids, ['x', 'y'])
@@ -564,12 +641,27 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         let dx = p.x - drag.start.x;
         let dy = p.y - drag.start.y;
         if (editor.snap) {
-          dx = snapTo(drag.origin.x + dx, editor.gridSize) - drag.origin.x;
-          dy = snapTo(drag.origin.y + dy, editor.gridSize) - drag.origin.y;
+          dx = editor.snapX(drag.origin.x + dx) - drag.origin.x;
+          dy = editor.snapY(drag.origin.y + dy) - drag.origin.y;
         }
+        ({ dx, dy } = editor.limitShift(drag.box, dx, dy));
         for (const id of drag.ids) {
           const b = drag.before[id];
           if (b) editor.live(id, { x: (b.x as number) + dx, y: (b.y as number) + dy });
+        }
+        break;
+      }
+      case 'gutter': {
+        const g = drag.g;
+        let d = g.axis === 'v' ? p.x - drag.start.x : p.y - drag.start.y;
+        if (editor.snap) d = (g.axis === 'v' ? editor.snapX(g.pos + d) : editor.snapY(g.pos + d)) - g.pos;
+        const moved = moveGutter(g, drag.rects, d);
+        for (const [id, box] of Object.entries(moved)) {
+          const b = drag.before[id];
+          const o0 = drag.rects.find((r) => r.id === id);
+          const layers = b?.layers as PanelLayer[] | undefined;
+          if (layers && o0 && !e.altKey) editor.live(id, { ...box, layers: scaleLayers(layers, box.w / o0.w, box.h / o0.h) });
+          else editor.live(id, { ...box });
         }
         break;
       }
@@ -580,12 +672,12 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
         const keep = (o.type === 'image') !== e.shiftKey;
         // Con el imán activo, el borde que se arrastra salta a la cuadrícula
         // (solo si el objeto no está girado: los bordes girados no siguen la cuadrícula).
-        let q = p;
+        let q = editor.limitPoint(p);
         const turn = Math.abs(drag.orig.rotation) % 90;
         if (editor.snap && (turn < 0.01 || turn > 89.99)) {
           q = {
-            x: drag.hx !== 0 ? snapTo(p.x, editor.gridSize) : p.x,
-            y: drag.hy !== 0 ? snapTo(p.y, editor.gridSize) : p.y
+            x: drag.hx !== 0 ? editor.snapX(q.x) : q.x,
+            y: drag.hy !== 0 ? editor.snapY(q.y) : q.y
           };
         }
         const box = resizeBox(drag.orig, drag.hx, drag.hy, toLocal(drag.orig, q), keep);
@@ -661,7 +753,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
       case 'vertex': {
         const o = editor.find(drag.id);
         if (!o || o.type !== 'panel') break;
-        const pp = editor.snap ? { x: snapTo(p.x, editor.gridSize), y: snapTo(p.y, editor.gridSize) } : p;
+        const lp = editor.limitPoint(p);
+        const pp = editor.snap ? { x: editor.snapX(lp.x), y: editor.snapY(lp.y) } : lp;
         const l = toLocal(o, pp);
         const px = pointsPx(o.points, o.w, o.h);
         px[drag.index] = { x: l.x + o.w / 2, y: l.y + o.h / 2 };
@@ -735,7 +828,7 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     if (!viewport) return;
     const pad = 72;
     const z = Math.min(
-      (viewport.clientWidth - pad) / editor.doc.pageW,
+      (viewport.clientWidth - pad) / viewW,
       (viewport.clientHeight - pad) / editor.doc.pageH
     );
     editor.setZoom(z > 0 ? z : 0.5);
@@ -866,17 +959,36 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     <div
       class="sheet"
       bind:this={sheet}
-      style:width="{editor.doc.pageW * editor.zoom}px"
+      style:width="{viewW * editor.zoom}px"
       style:height="{editor.doc.pageH * editor.zoom}px"
     >
       <svg
         class="page"
-        viewBox="0 0 {editor.doc.pageW} {editor.doc.pageH}"
-        width={editor.doc.pageW * editor.zoom}
+        viewBox="{viewX} 0 {viewW} {editor.doc.pageH}"
+        width={viewW * editor.zoom}
         height={editor.doc.pageH * editor.zoom}
       >
-        <!-- Contenido recortado al borde de la página -->
-        <svg x="0" y="0" width={editor.doc.pageW} height={editor.doc.pageH} overflow="hidden">
+        {#if sp}
+          <!-- Página vecina (solo lectura): un clic en ella la convierte en la activa -->
+          <svg x={sp.px} y="0" width={pageW} height={pageH} overflow="hidden" role="presentation" data-partner={sp.pi}>
+            <PageContent
+              w={pageW}
+              h={pageH}
+              page={editor.doc.pages[sp.pi]}
+              assets={editor.assets}
+              scope="partner"
+              quality="view"
+              style={sp.pinfo.style}
+              pageNo={sp.pinfo.pageNo}
+              pageCount={sp.pinfo.pageCount}
+              globals={sp.pinfo.globals}
+              side={sp.pside}
+            />
+          </svg>
+          <line x1={sp.px > 0 ? pageW : 0} y1="0" x2={sp.px > 0 ? pageW : 0} y2={pageH} stroke="rgb(0 0 0 / 0.25)" stroke-width="1" vector-effect="non-scaling-stroke" pointer-events="none" />
+        {/if}
+        <!-- Contenido recortado al borde de la página (en doble página, al borde del conjunto) -->
+        <svg x={viewX} y="0" width={viewW} height={editor.doc.pageH} overflow="hidden" viewBox="{viewX} 0 {viewW} {editor.doc.pageH}">
           <PageContent
             w={editor.doc.pageW}
             h={editor.doc.pageH}
@@ -890,6 +1002,8 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
             pageNo={info.pageNo}
             pageCount={info.pageCount}
             globals={info.globals}
+            side={editor.side}
+            {spill}
             styleEdit={editor.styleMode}
             underlay={editor.doc.pages[editor.pageIndex]?.background}
           />
@@ -901,10 +1015,29 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
               <line x1={l.at} y1="0" x2={l.at} y2={editor.doc.pageH} stroke={l.major ? 'rgb(47 125 246 / 0.5)' : 'rgb(47 125 246 / 0.2)'} stroke-width="1" vector-effect="non-scaling-stroke" />
             {/each}
             {#each gridV.y as l}
-              <line x1="0" y1={l.at} x2={editor.doc.pageW} y2={l.at} stroke={l.major ? 'rgb(47 125 246 / 0.5)' : 'rgb(47 125 246 / 0.2)'} stroke-width="1" vector-effect="non-scaling-stroke" />
+              <line x1={viewX} y1={l.at} x2={viewX + viewW} y2={l.at} stroke={l.major ? 'rgb(47 125 246 / 0.5)' : 'rgb(47 125 246 / 0.2)'} stroke-width="1" vector-effect="non-scaling-stroke" />
             {/each}
           </g>
         {/if}
+
+        {#each gutters as g, i (`${g.axis}${i}`)}
+          {@const th = Math.max(g.gap, 10 / editor.zoom)}
+          <rect
+            class="gutter {g.axis}"
+            data-gutter={i}
+            x={g.axis === 'v' ? g.pos - th / 2 : g.from}
+            y={g.axis === 'v' ? g.from : g.pos - th / 2}
+            width={g.axis === 'v' ? th : g.to - g.from}
+            height={g.axis === 'v' ? g.to - g.from : th}
+            fill="transparent"
+          >
+            <title>{t('gutter.tip')}</title>
+          </rect>
+        {/each}
+
+        {#each guides as g}
+          <rect x={g.x} y={g.y} width={g.w} height={g.h} fill="none" stroke="rgb(214 51 132 / 0.75)" stroke-width="1" stroke-dasharray="6 4" vector-effect="non-scaling-stroke" pointer-events="none" />
+        {/each}
 
         {#if cutLine}
           <line x1={cutLine.a.x} y1={cutLine.a.y} x2={cutLine.b.x} y2={cutLine.b.y} stroke="#e5342d" stroke-width="2.5" stroke-dasharray="8 5" vector-effect="non-scaling-stroke" pointer-events="none" />
@@ -1239,7 +1372,7 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   {#if editor.cutMode}
     <div class="cutbar" role="toolbar" aria-label={t('cut.title')} onpointerdown={(e) => e.stopPropagation()}>
       <span>{t('cut.hint')}</span>
-      <label>{t('cut.gap')} <input type="number" min="0" max="200" step="1" value={editor.cutGap} oninput={(e) => (editor.cutGap = Math.max(0, Number(e.currentTarget.value) || 0))} /></label>
+      <label>{t('cut.gap')} <input type="number" min="0" max="200" step="1" value={editor.cutGapEff} oninput={(e) => (editor.cutGap = Math.max(0, Number(e.currentTarget.value) || 0))} /></label>
       <button type="button" onclick={() => (editor.cutMode = false)}>{t('cut.done')}</button>
     </div>
   {/if}
@@ -1317,5 +1450,17 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
     padding-left: 0;
     padding-right: 0;
     padding-bottom: 0;
+  }
+  .gutter {
+    cursor: pointer;
+  }
+  .gutter.v {
+    cursor: col-resize;
+  }
+  .gutter.h {
+    cursor: row-resize;
+  }
+  .gutter:hover {
+    fill: rgb(47 125 246 / 0.3);
   }
 </style>

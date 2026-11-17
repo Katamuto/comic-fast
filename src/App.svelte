@@ -20,6 +20,8 @@
   import ProgressDialog from './lib/components/ProgressDialog.svelte';
   import ContextMenu from './lib/components/ContextMenu.svelte';
   import GridDialog from './lib/components/GridDialog.svelte';
+  import LayoutDialog from './lib/components/LayoutDialog.svelte';
+  import ExportDialog from './lib/components/ExportDialog.svelte';
   import SplitDialog from './lib/components/SplitDialog.svelte';
   import SelectPopup from './lib/components/SelectPopup.svelte';
   import NewDrawingDialog from './lib/components/NewDrawingDialog.svelte';
@@ -28,6 +30,8 @@
   import DistributeDialog from './lib/components/DistributeDialog.svelte';
   import ReorganizeDialog from './lib/components/ReorganizeDialog.svelte';
   import FontDialog from './lib/components/FontDialog.svelte';
+  import Splitter from './lib/components/Splitter.svelte';
+  import { clampSize, setSize, uiSizes } from './lib/app/uiSizes.svelte';
   import { downloads } from './lib/app/downloads.svelte';
   import { notices } from './lib/app/notices.svelte';
   import { i18n, t } from './lib/i18n/index.svelte';
@@ -129,6 +133,17 @@
     if (added.length > 0) editor.status = t('status.droppedToResources', { n: added.length });
   }
 
+  // Anchos de los paneles laterales (arrastrando sus bordes).
+  let appEl = $state<HTMLDivElement>();
+  let menuH = $state(0);
+  let statusH = $state(0);
+  const colWidth = (i: number) => {
+    const cols = appEl ? getComputedStyle(appEl).gridTemplateColumns.split(' ').map(parseFloat) : [];
+    return cols[i] || 200;
+  };
+  /** Lo máximo que puede ocupar un lateral dejando al lienzo al menos 360 px. */
+  const room = (other: number) => (appEl ? appEl.clientWidth - colWidth(other) - 360 : Infinity);
+
   // Los mensajes de estado desaparecen solos.
   $effect(() => {
     const s = editor.status;
@@ -156,9 +171,17 @@
 {#if device.mobile}
   <MobileApp />
 {:else}
-<div class="app">
-  <div class="menu"><MenuBar /></div>
+<div
+  class="app"
+  bind:this={appEl}
+  style:--lw={uiSizes.left !== null ? `${uiSizes.left}px` : '13.5385rem'}
+  style:--rw={uiSizes.right !== null ? `${uiSizes.right}px` : '22.4615rem'}
+>
+  <div class="menu" bind:clientHeight={menuH}><MenuBar /></div>
   <PageList />
+  <div class="sp sp-left" style:top="{menuH}px" style:bottom="{statusH}px">
+    <Splitter orientation="v" grow={1} label={t('split.left')} measure={() => colWidth(0)} onresize={(px) => setSize('left', clampSize('left', px, room(2)))} onreset={() => setSize('left', null)} />
+  </div>
   <main>
     <Toolbar />
     <div class="canvas"><Canvas /></div>
@@ -169,8 +192,11 @@
       </div>
     {/if}
   </main>
+  <div class="sp sp-right" style:top="{menuH}px" style:bottom="{statusH}px">
+    <Splitter orientation="v" grow={-1} label={t('split.right')} measure={() => colWidth(2)} onresize={(px) => setSize('right', clampSize('right', px, room(0)))} onreset={() => setSize('right', null)} />
+  </div>
   <ResourcePanel />
-  <div class="status"><StatusBar /></div>
+  <div class="status" bind:clientHeight={statusH}><StatusBar /></div>
 </div>
 {/if}
 {#if fileOver}
@@ -187,6 +213,8 @@
   {#if editor.showFonts}<FontDialog />{/if}
   {#if editor.showGlobals}<GlobalsDialog />{/if}
   {#if editor.showGridDialog}<GridDialog />{/if}
+  {#if editor.showLayout}<LayoutDialog />{/if}
+  {#if editor.showExport}<ExportDialog />{/if}
   {#if editor.showSplit}<SplitDialog />{/if}
   {#if editor.showTemplates}<TemplateDialog />{/if}
   {#if editor.showDistribute}<DistributeDialog />{/if}
@@ -222,10 +250,28 @@
   }
   .app {
     display: grid;
-    grid-template-columns: 13.5385rem minmax(0, 1fr) 22.4615rem;
+    grid-template-columns: var(--lw, 13.5385rem) minmax(0, 1fr) var(--rw, 22.4615rem);
+    position: relative;
     grid-template-rows: auto minmax(0, 1fr) auto;
     height: 100vh;
     height: 100dvh;
+  }
+  /* Los bordes arrastrables flotan sobre la unión entre columnas (entre la barra de menús y la de estado). */
+  .sp {
+    position: absolute;
+    z-index: 30;
+    display: flex;
+    pointer-events: none;
+    width: 0;
+  }
+  .sp :global(.split) {
+    pointer-events: auto;
+  }
+  .sp-left {
+    left: var(--lw, 13.5385rem);
+  }
+  .sp-right {
+    right: var(--rw, 22.4615rem);
   }
   .menu,
   .status {

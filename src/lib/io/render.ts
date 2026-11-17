@@ -13,7 +13,8 @@ import { flushSync, mount, unmount } from 'svelte';
 import PageSvg from '../components/PageSvg.svelte';
 import { FONT_FACES, loadFonts } from '../render/fonts.svelte';
 import { userFonts } from '../render/userFonts.svelte';
-import { pageInfo } from '../model/style';
+import { pageInfo, pageSpill } from '../model/style';
+import { pageSide, resolveLayout } from '../model/layout';
 import { bytesToBase64, mimeFromName } from './images';
 import { IMAGE_TEXTURES } from '../resources/patternLib';
 import type { Asset, ComicDoc, ID, Page } from '../model/types';
@@ -88,11 +89,13 @@ export async function pageToSvgString(
   doc: ComicDoc,
   page: Page,
   assets: Record<ID, Asset>,
-  scale: number
+  scale: number,
+  bleed = 0
 ): Promise<string> {
   await loadFonts();
   const host = document.createElement('div');
-  const info = pageInfo(doc, Math.max(0, doc.pages.findIndex((p) => p.id === page.id)));
+  const index = Math.max(0, doc.pages.findIndex((p) => p.id === page.id));
+  const info = pageInfo(doc, index);
   const comp = mount(PageSvg, {
     target: host,
     props: {
@@ -101,6 +104,9 @@ export async function pageToSvgString(
       page,
       assets,
       scope: 'export',
+      bleed,
+      side: pageSide(resolveLayout(doc.layout), index),
+      spill: pageSpill(doc, index),
       ...info
     }
   });
@@ -108,8 +114,8 @@ export async function pageToSvgString(
 
   const svg = host.querySelector('svg');
   if (!svg) throw new TKError('err.pageGen', 'No se pudo generar la página');
-  svg.setAttribute('width', String(Math.round(doc.pageW * scale)));
-  svg.setAttribute('height', String(Math.round(doc.pageH * scale)));
+  svg.setAttribute('width', String(Math.round((doc.pageW + 2 * bleed) * scale)));
+  svg.setAttribute('height', String(Math.round((doc.pageH + 2 * bleed) * scale)));
   let markup = new XMLSerializer().serializeToString(svg);
   unmount(comp);
 
@@ -135,9 +141,10 @@ export async function renderPageCanvas(
   doc: ComicDoc,
   page: Page,
   assets: Record<ID, Asset>,
-  scale: number
+  scale: number,
+  bleed = 0
 ): Promise<HTMLCanvasElement> {
-  const markup = await pageToSvgString(doc, page, assets, scale);
+  const markup = await pageToSvgString(doc, page, assets, scale, bleed);
   const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
   try {
     const img = new Image();
@@ -148,8 +155,8 @@ export async function renderPageCanvas(
     });
 
     const canvas = document.createElement('canvas');
-    canvas.width = Math.round(doc.pageW * scale);
-    canvas.height = Math.round(doc.pageH * scale);
+    canvas.width = Math.round((doc.pageW + 2 * bleed) * scale);
+    canvas.height = Math.round((doc.pageH + 2 * bleed) * scale);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new TKError('err.canvas', 'No se pudo crear el lienzo de exportación');
 

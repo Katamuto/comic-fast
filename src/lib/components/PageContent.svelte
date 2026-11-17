@@ -10,6 +10,8 @@
    * Los textos admiten {n} (número de página) y {total} (cuántas páginas hay).
    */
   import type { Asset, Globals, ID, Page, PageObject, PanelObj } from '../model/types';
+  import type { Side } from '../model/layout';
+  import type { Spill } from '../model/style';
   import { applyGlobals, textForced } from '../model/globals';
   import { provideTextMode } from '../app/quality';
   import { pageTokens, styleSplit } from '../model/style';
@@ -41,6 +43,12 @@
     quality?: Quality;
     /** Parámetros globales del cómic. */
     globals?: Globals | null;
+    /** Lado de la página en el libro: filtra los objetos de estilo con `only`. */
+    side?: Side | null;
+    /** Sangrado (px de página): el fondo se extiende esa distancia por fuera de los bordes. */
+    bleed?: number;
+    /** Contenido de la página vecina que se mete en esta (arte a doble página). */
+    spill?: Spill | null;
   }
   let {
     w,
@@ -56,7 +64,10 @@
     styleEdit = false,
     underlay = '#ffffff',
     quality = 'full',
-    globals = null
+    globals = null,
+    side = null,
+    bleed = 0,
+    spill = null
   }: Props = $props();
   // Los textos saben si el tamaño es forzado y si deben marcar con rojo lo que no cabe (solo en el editor).
   provideTextMode(() => ({ force: textForced(globals), warn: interactive }));
@@ -72,19 +83,34 @@
   }
   const plan = $derived(styleEdit ? [] : renderPlan(page.objects));
 
-  function tok(o: PageObject): PageObject {
-    if (o.type === 'balloon' && o.link?.mode === 'tail') o = withLinkedTail(o, byId);
+  function tokWith(o: PageObject, ids: Map<ID, PageObject>, no: number | null, count: number, g: Globals | null): PageObject {
+    if (o.type === 'balloon' && o.link?.mode === 'tail') o = withLinkedTail(o, ids);
     if ((o.type === 'text' || o.type === 'balloon') && o.text.includes('{')) {
-      const text = pageTokens(o.text, pageNo, pageCount);
+      const text = pageTokens(o.text, no, count);
       o = { ...o, text, spans: shiftSpans(o.spans, o.text, text) };
     }
-    return applyGlobals(o, globals);
+    return applyGlobals(o, g);
   }
+  const tok = (o: PageObject) => tokWith(o, byId, pageNo, pageCount, globals);
 
-  const split = $derived(styleSplit(styleEdit ? page : style));
+  /** Vecina: sus objetos se dibujan desplazados; lo que cae fuera de esta página lo recorta el borde. */
+  const spillById = $derived(new Map<ID, PageObject>((spill?.page.objects ?? []).map((o) => [o.id, o])));
+  const spillPlan = $derived(spill ? renderPlan(spill.page.objects) : []);
+  const spillParent = (o: PageObject): PanelObj | null => {
+    if ((o.type !== 'balloon' && o.type !== 'text') || !o.parent) return null;
+    const p = spillById.get(o.parent);
+    return p && p.type === 'panel' ? p : null;
+  };
+
+  const split = $derived.by(() => {
+    const sp = styleSplit(styleEdit ? page : style);
+    if (styleEdit) return sp;
+    const ok = (o: PageObject) => !o.only || o.only === side;
+    return { below: sp.below.filter(ok), above: sp.above.filter(ok) };
+  });
 </script>
 
-<rect x="0" y="0" width={w} height={h} fill={styleEdit ? underlay : page.background} />
+<rect x={-bleed} y={-bleed} width={w + 2 * bleed} height={h + 2 * bleed} fill={styleEdit ? underlay : page.background} />
 
 {#if styleEdit}
   {#each split.below as obj (obj.id)}
@@ -113,6 +139,19 @@
     <g pointer-events="none">
       {#each split.below as obj (obj.id)}
         <ObjectView obj={tok(obj)} {assets} scope={`${scope}-st`} />
+      {/each}
+    </g>
+  {/if}
+  {#if spill}
+    <g transform={`translate(${spill.dx} 0)`} pointer-events="none">
+      {#each spillPlan as item (`${item.obj.id}-${item.phase}`)}
+        <ObjectView
+          obj={tokWith(item.obj, spillById, spill.pageNo, spill.pageCount, spill.globals)}
+          {assets}
+          scope={`${scope}-sp`}
+          phase={item.phase}
+          clipTo={spillParent(item.obj)}
+        />
       {/each}
     </g>
   {/if}

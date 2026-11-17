@@ -30,7 +30,8 @@ export function panelLike(base: PanelObj, polyPage: Pt[]): Omit<PanelObj, 'id'> 
     return { x: l.x + base.w / 2, y: l.y + base.h / 2 };
   });
   const patch = panelWithPoints(base, px);
-  const { id: _id, ...rest } = structuredClone(base);
+  // JSON en vez de structuredClone: los objetos del estado reactivo son proxies y este último no puede copiarlos.
+  const { id: _id, ...rest } = JSON.parse(JSON.stringify(base)) as PanelObj;
   return { ...rest, ...patch, shape: 'poly', locked: undefined } as Omit<PanelObj, 'id'>;
 }
 

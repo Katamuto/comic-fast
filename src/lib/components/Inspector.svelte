@@ -16,6 +16,9 @@
   import ImageFxEditor from './fields/ImageFxEditor.svelte';
   import { listPatterns, listTextures, usesSeed } from '../render/patterns';
   import RichBar from './fields/RichBar.svelte';
+  import InspSection from './InspSection.svelte';
+  import { uiSizes } from '../app/uiSizes.svelte';
+  import { sideMargins } from '../model/layout';
   import { TAIL_STYLES } from '../render/balloon';
   import { patternName } from '../render/patternNames.svelte';
 
@@ -64,7 +67,7 @@
   }
 </script>
 
-<section class="inspector" aria-label={t('insp.title')}>
+<section class="inspector" aria-label={t('insp.title')} style:height={uiSizes.insp !== null ? `${uiSizes.insp}px` : undefined} style:max-height={uiSizes.insp !== null ? 'none' : undefined}>
   {#if o}
     <div class="head">
       <h3>{t(`obj.${o.type}`)}</h3>
@@ -81,8 +84,19 @@
       <NumberField label={t('insp.h')} value={o.h} min={12} onchange={(v) => setSize(o.w, Math.max(12, v), 'h')} />
       <NumberField label={t('insp.rotation')} value={o.rotation} onchange={(v) => set({ rotation: v }, 'rotation')} />
     </div>
+    {#if editor.styleMode && editor.layout.book}
+      <label class="block inline">
+        <span>{t('insp.only')}</span>
+        <select value={o.only ?? ''} onchange={(e) => set({ only: e.currentTarget.value || undefined }, 'only')}>
+          <option value="">{t('insp.onlyAll')}</option>
+          <option value="left">{t('insp.onlyLeft')}</option>
+          <option value="right">{t('insp.onlyRight')}</option>
+        </select>
+      </label>
+    {/if}
 
     {#if o.type === 'panel'}
+      <InspSection id="panel.shape" title={t('insp.sec.shape')}>
       <label class="block">
         <span>{t('insp.shape')}</span>
         <select value={o.shape} onchange={(e) => editor.setShape(o.id, e.currentTarget.value as PanelShape)}>
@@ -102,8 +116,12 @@
         <NumberField label={t('insp.strokeWidth')} value={o.strokeWidth} min={0} onchange={(v) => set({ strokeWidth: Math.max(0, v) }, 'sw')} />
       </div>
       <BlendField value={o.blend} onchange={(v) => set({ blend: v }, 'blend')} />
-      <LayersPanel panel={o} />
+      </InspSection>
+      <InspSection id="panel.layers" title={t('insp.sec.layers')}>
+        <LayersPanel panel={o} />
+      </InspSection>
     {:else if o.type === 'image'}
+      <InspSection id="image.main" title={t('insp.sec.image')}>
       <RangeField label={t('insp.opacity')} value={o.opacity} min={0} max={1} onchange={(v) => set({ opacity: v }, 'opacity')} />
       <BlendField value={o.blend} onchange={(v) => set({ blend: v }, 'blend')} />
       <div class="buttons">
@@ -111,13 +129,19 @@
         <button type="button" class:toggle={o.flipV} onclick={() => editor.flip('v')}>{t('act.edit.flipV')}</button>
       </div>
       <button type="button" onclick={() => imageEditor.openCurrent()}>{t('img.edit')}</button>
-      <ImageFxEditor fx={o.fx} onchange={(fx) => set({ fx }, 'fx')} />
+      </InspSection>
+      <InspSection id="image.fx" title={t('insp.sec.filters')} open={false}>
+        <ImageFxEditor fx={o.fx} onchange={(fx) => set({ fx }, 'fx')} />
+      </InspSection>
     {:else if o.type === 'balloon'}
+      <InspSection id="balloon.text" title={t('insp.sec.text')}>
       <label class="block">
         <span>{t('insp.text')}</span>
         <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => { set({ text: e.currentTarget.value }, 'text'); trackSel(e.currentTarget, o.id); }} onselect={(e) => trackSel(e.currentTarget, o.id)} onkeyup={(e) => trackSel(e.currentTarget, o.id)} onmouseup={(e) => trackSel(e.currentTarget, o.id)} onkeydown={(e) => richKey(e)}></textarea>
       </label>
       <RichBar {o} />
+      </InspSection>
+      <InspSection id="balloon.style" title={t('insp.sec.style')}>
       <div class="grid2">
         <label class="block">
           <span>{t('insp.style')}</span>
@@ -164,8 +188,9 @@
         <RangeField label={t('insp.toothLen')} value={o.toothLen ?? 0.09} min={0.03} max={0.3} step={0.01} onchange={(v) => set({ toothLen: v }, 'tl')} />
         <RangeField label={t('insp.toothWidth')} value={o.toothWidth ?? 0.1} min={0.04} max={0.4} step={0.01} onchange={(v) => set({ toothWidth: v }, 'tww')} />
       {/if}
+      </InspSection>
       {#if TAIL_STYLES.includes(o.style)}
-        <h4 class="sub">{t('insp.tail')}</h4>
+        <InspSection id="balloon.tail" title={t('insp.tail')} open={false}>
         <RangeField label={t('insp.tailWidth')} value={o.tailWidth ?? 1} min={0.1} max={3} step={0.05} onchange={(v) => set({ tailWidth: v }, 'tw')} />
         <RangeField label={t('insp.tailCurve')} value={o.tailCurve ?? 0} min={-1} max={1} step={0.02} onchange={(v) => set({ tailCurve: v }, 'tc')} />
         <div class="buttons">
@@ -173,9 +198,10 @@
           <button type="button" onclick={() => set({ tailOx: 0, tailOy: 0 }, 'tail-origin')}>{t('insp.tailOriginReset')}</button>
         </div>
         <p class="hint">{t('insp.tailHint')}</p>
+        </InspSection>
       {/if}
       {#if linkChoices.length > 0 || o.link}
-        <h4 class="sub">{t('insp.link')}</h4>
+        <InspSection id="balloon.link" title={t('insp.link')} open={false}>
         <label class="block">
           <span>{t('insp.linkTo')}</span>
           <select value={o.link?.to ?? ''} onchange={(e) => setLink(e.currentTarget.value, o.link?.mode ?? 'tail')}>
@@ -195,13 +221,17 @@
           </label>
           <p class="hint">{t('insp.linkHint')}</p>
         {/if}
+        </InspSection>
       {/if}
     {:else if o.type === 'text'}
+      <InspSection id="text.text" title={t('insp.sec.text')}>
       <label class="block">
         <span>{t('insp.text')}</span>
         <textarea rows="3" spellcheck="true" lang={editor.doc.textLang || i18n.lang} autocorrect="on" autocapitalize="sentences" value={o.text} oninput={(e) => { set({ text: e.currentTarget.value }, 'text'); trackSel(e.currentTarget, o.id); }} onselect={(e) => trackSel(e.currentTarget, o.id)} onkeyup={(e) => trackSel(e.currentTarget, o.id)} onmouseup={(e) => trackSel(e.currentTarget, o.id)} onkeydown={(e) => richKey(e)}></textarea>
       </label>
       <RichBar {o} />
+      </InspSection>
+      <InspSection id="text.font" title={t('insp.sec.font')}>
       <div class="grid2">
         <label class="block">
           <span>{t('insp.font')}</span>
@@ -240,6 +270,8 @@
         <ColorField label={t('insp.outline')} value={o.outline} onchange={(v) => set({ outline: v }, 'outline')} />
         <NumberField label={t('insp.outlineWidth')} value={o.outlineWidth} min={0} onchange={(v) => set({ outlineWidth: Math.max(0, v) }, 'ow')} />
       </div>
+      </InspSection>
+      <InspSection id="text.warp" title={t('insp.warp')} open={false}>
       <label class="block">
         <span>{t('insp.warp')}</span>
         <select
@@ -260,12 +292,14 @@
         <RangeField label={t('insp.warpAmount')} value={o.warp.amount} min={-100} max={100} step={1} onchange={(v) => set({ warp: { kind: o.warp!.kind, amount: v } }, 'warpAmt')} />
         {#if o.vertical}<p class="hint">{t('warp.verticalHint')}</p>{/if}
       {/if}
+      </InspSection>
       <div class="checks">
         <label><input type="checkbox" checked={o.bold} onchange={(e) => set({ bold: e.currentTarget.checked }, 'bold')} /> {t('insp.bold')}</label>
         <label><input type="checkbox" checked={o.italic} onchange={(e) => set({ italic: e.currentTarget.checked }, 'italic')} /> {t('insp.italic')}</label>
         <label><input type="checkbox" checked={!!o.vertical} onchange={(e) => set({ vertical: e.currentTarget.checked }, 'vertical')} /> {t('insp.vertical')}</label>
       </div>
     {:else if o.type === 'pattern'}
+      <InspSection id="pattern.main" title={t('insp.sec.pattern')}>
       <label class="block">
         <span>{t('insp.kind')}</span>
         <select value={o.kind} onchange={(e) => set({ kind: e.currentTarget.value }, 'kind')}>
@@ -294,34 +328,66 @@
           <button type="button" onclick={() => set({ seed: (o.seed ?? 0) + 1 }, 'seed')}>{t('insp.vary')}</button>
         </div>
       {/if}
+      </InspSection>
     {/if}
-    <h4 class="sub">{t('insp.distort')}</h4>
+    <InspSection id="distort" title={t('insp.distort')} open={false}>
     <RangeField label={t('insp.distortAmount')} value={o.distort?.amount ?? 0} min={0} max={40} step={0.5} onchange={(v) => set({ distort: v > 0 ? { amount: v, size: o.distort?.size ?? 40 } : undefined }, 'distort')} />
     {#if o.distort}
       <RangeField label={t('insp.distortSize')} value={o.distort.size} min={6} max={200} step={1} onchange={(v) => set({ distort: { amount: o.distort!.amount, size: v } }, 'distortSize')} />
     {/if}
+    </InspSection>
   {:else if editor.selection.length > 1}
     <h3>{t('insp.multi')}</h3>
     <p class="hint">{t('insp.multiHint', { n: editor.selection.length })}</p>
   {:else if editor.styleMode}
     <h3>{t('insp.styleTitle')}</h3>
     <p class="hint">{t('insp.styleHint')}</p>
+    {#if editor.layout.book}
+      <label class="block inline">
+        <span>{t('insp.styleSide')}</span>
+        <select value={editor.styleSide} onchange={(e) => (editor.styleSide = e.currentTarget.value as 'left' | 'right')}>
+          <option value="right">{t('layout.right')}</option>
+          <option value="left">{t('layout.left')}</option>
+        </select>
+      </label>
+      <p class="hint">{t('insp.styleSideHint')}</p>
+      <div class="buttons"><button type="button" onclick={() => editor.addPageNumbers()}>{t('insp.addNumbers')}</button></div>
+    {/if}
   {:else}
-    <h3>{t('insp.page', { n: editor.pageIndex + 1 })}</h3>
+    {@const lay = editor.layout}
+    {@const m = sideMargins(lay, editor.side)}
+    <div class="head">
+      <h3>{t('insp.page', { n: editor.pageIndex + 1 })}</h3>
+      {#if editor.side}<span class="badge">{editor.side === 'left' ? t('layout.leftShort') : t('layout.rightShort')}</span>{/if}
+    </div>
     <ColorField label={t('insp.pageBg')} value={editor.page.background} alpha={false} onchange={(v) => editor.setBackground(v)} />
-    <label class="block">
-      <span>{t('insp.textLang')}</span>
-      <select value={editor.doc.textLang ?? ''} onchange={(e) => editor.setTextLang(e.currentTarget.value)}>
-        <option value="">{t('insp.textLangAuto')}</option>
-        {#each LANGUAGES as l (l.code)}
-          <option value={l.code} lang={l.code}>{l.name}</option>
-        {/each}
-      </select>
-    </label>
-    <p class="hint">{t('insp.textLangHint')}</p>
-    <p class="hint">
-      {t('insp.pageHint', { w: Math.round(editor.doc.pageW), h: Math.round(editor.doc.pageH) })}
-    </p>
+    <InspSection id="page.layout" title={t('insp.sec.layout')}>
+      <p class="hint">
+        {t('insp.layoutInfo', { ppi: lay.ppi, w: Math.round((editor.doc.pageW / 150) * 254) / 10, h: Math.round((editor.doc.pageH / 150) * 254) / 10 })}
+      </p>
+      <p class="hint">
+        {t('insp.layoutMargins', { t: Math.round((m.top / 150) * 254) / 10, b: Math.round((m.bottom / 150) * 254) / 10, l: Math.round((m.left / 150) * 254) / 10, r: Math.round((m.right / 150) * 254) / 10, bleed: Math.round((lay.bleed / 150) * 254) / 10, gutter: Math.round((lay.gutter / 150) * 254) / 10 })}
+      </p>
+      <div class="buttons">
+        <button type="button" onclick={() => (editor.showLayout = true)}>{t('act.page.layout')}</button>
+        {#if lay.book && editor.partner !== null}
+          <button type="button" class:toggle={editor.spread} onclick={() => { editor.spread = !editor.spread; setTimeout(() => editor.fitView?.(), 0); }}>{t('act.view.spread')}</button>
+        {/if}
+        <button type="button" onclick={() => (editor.showExport = true)}>{t('act.file.exportPrint')}</button>
+      </div>
+    </InspSection>
+    <InspSection id="page.text" title={t('insp.sec.language')} open={false}>
+      <label class="block">
+        <span>{t('insp.textLang')}</span>
+        <select value={editor.doc.textLang ?? ''} onchange={(e) => editor.setTextLang(e.currentTarget.value)}>
+          <option value="">{t('insp.textLangAuto')}</option>
+          {#each LANGUAGES as l (l.code)}
+            <option value={l.code} lang={l.code}>{l.name}</option>
+          {/each}
+        </select>
+      </label>
+      <p class="hint">{t('insp.textLangHint')}</p>
+    </InspSection>
   {/if}
 </section>
 
@@ -345,8 +411,25 @@
   }
   .grid5 {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0.3077rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+  .badge {
+    padding: 0.05rem 0.5rem;
+    border-radius: 1rem;
+    background: var(--sel);
+    color: #fff;
+    font-size: 0.7692rem;
+    font-weight: 700;
+  }
+  .block.inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .block.inline select {
+    flex: 1;
+    min-width: 0;
   }
   .grid2 {
     display: grid;

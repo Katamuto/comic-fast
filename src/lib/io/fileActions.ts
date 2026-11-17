@@ -5,7 +5,7 @@
 import { editor } from '../model/store.svelte';
 import type { Asset } from '../model/types';
 import { decodeProject, encodeProject } from './cfast';
-import { exportCbz, exportPagePng, exportPdf } from './exporters';
+import { exportCbz, exportPagePng, exportPdf, exportPrintPdf, exportTiffZip, planFor, type ExportOptions } from './exporters';
 import { IMAGE_EXTENSIONS, mimeFromName } from './images';
 import { t, errorText, i18n } from '../i18n/index.svelte';
 import { userFonts } from '../render/userFonts.svelte';
@@ -223,6 +223,47 @@ export function exportAllCbz(): Promise<void> {
       })
     );
     const res = await saveFile(bytes, `${baseTitle()}.cbz`, [{ name: t('file.filter.cbz'), extensions: ['cbz'] }], null);
+    editor.status = res ? t('status.exported', { name: res.name }) : '';
+  });
+}
+
+export type ExportKind = 'png' | 'pdf' | 'cbz' | 'printPdf' | 'tiff';
+
+/** Exporta con las opciones del diálogo de exportación (PPI, sangrado, marcas, CMYK, páginas). */
+export function runExport(kind: ExportKind, opts: ExportOptions): Promise<void> {
+  return guarded(async () => {
+    const doc = editor.snapshot();
+    const plan = planFor(doc, kind === 'printPdf' || kind === 'tiff' ? { ...opts, bleed: opts.bleed ?? true } : opts);
+    if (plan.capped) editor.status = t('export.capped', { ppi: plan.effectivePpi });
+    const progress = (set: (d: number, total: number, l?: string) => void) => (d: number, total: number) => {
+      set(d, total, d >= total ? t('progress.assembling') : t('progress.pageOf', { d: d + 1, total }));
+    };
+    let bytes: Uint8Array;
+    let name: string;
+    let filter: FileFilter[];
+    if (kind === 'png') {
+      const i = opts.pages?.[0] ?? editor.pageIndex;
+      bytes = await withProgress(t('progress.page'), () => exportPagePng(doc, i, editor.assets, opts));
+      name = `${baseTitle()}-${t('export.pageWord')}-${i + 1}.png`;
+      filter = [{ name: t('file.filter.png'), extensions: ['png'] }];
+    } else if (kind === 'pdf') {
+      bytes = await withProgress(t('progress.pdf'), (set) => exportPdf(doc, editor.assets, baseTitle(), progress(set), opts));
+      name = `${baseTitle()}.pdf`;
+      filter = [{ name: 'PDF', extensions: ['pdf'] }];
+    } else if (kind === 'cbz') {
+      bytes = await withProgress(t('progress.cbz'), (set) => exportCbz(doc, editor.assets, progress(set), opts));
+      name = `${baseTitle()}.cbz`;
+      filter = [{ name: t('file.filter.cbz'), extensions: ['cbz'] }];
+    } else if (kind === 'printPdf') {
+      bytes = await withProgress(t('progress.print'), (set) => exportPrintPdf(doc, editor.assets, baseTitle(), progress(set), opts));
+      name = `${baseTitle()}-${t('export.printWord')}.pdf`;
+      filter = [{ name: 'PDF', extensions: ['pdf'] }];
+    } else {
+      bytes = await withProgress(t('progress.print'), (set) => exportTiffZip(doc, editor.assets, progress(set), opts));
+      name = `${baseTitle()}-tiff-cmyk.zip`;
+      filter = [{ name: 'ZIP', extensions: ['zip'] }];
+    }
+    const res = await saveFile(bytes, name, filter, null);
     editor.status = res ? t('status.exported', { name: res.name }) : '';
   });
 }

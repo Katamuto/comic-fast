@@ -13,6 +13,8 @@
   import { TABS, type ResourceItem } from '../resources/registry';
   import ResourcePreview from './ResourcePreview.svelte';
   import Inspector from './Inspector.svelte';
+  import Splitter from './Splitter.svelte';
+  import { clampSize, setSize } from '../app/uiSizes.svelte';
   import Collapsible from './Collapsible.svelte';
   import Icon from './Icon.svelte';
   import { contextMenu } from '../app/contextMenu.svelte';
@@ -289,7 +291,17 @@
     {/if}
   </div>
 
-  {#if inspector}<Inspector />{/if}
+  {#if inspector}
+    <Splitter
+      orientation="h"
+      grow={-1}
+      label={t('split.inspector')}
+      measure={() => document.querySelector('.inspector')?.getBoundingClientRect().height ?? 240}
+      onresize={(px) => setSize('insp', clampSize('insp', px))}
+      onreset={() => setSize('insp', null)}
+    />
+    <Inspector />
+  {/if}
 </aside>
 
 <style>

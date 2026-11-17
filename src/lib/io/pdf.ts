@@ -11,6 +11,19 @@ export interface PdfPage {
   /** Tamaño de página en puntos (1/72 in). */
   ptW: number;
   ptH: number;
+  /**
+   * Imagen de 4 canales (CMYK, 8 bits) comprimida con zlib en lugar de JPEG RGB. Los bytes van en `jpeg`
+   * (el nombre se conserva por compatibilidad).
+   */
+  cmyk?: boolean;
+  /** Impresión: tamaño de la hoja (MediaBox) y rectángulo que ocupa la imagen, en puntos. Sin ellos, la imagen llena la página. */
+  media?: { w: number; h: number };
+  image?: { x: number; y: number; w: number; h: number };
+  /** Rectángulos [x0 y0 x1 y1] en puntos desde abajo-izquierda. */
+  trim?: [number, number, number, number];
+  bleedBox?: [number, number, number, number];
+  /** Operadores de contenido PDF extra dibujados encima (marcas de corte). */
+  marks?: string;
 }
 
 const num = (n: number) => (Math.round(n * 100) / 100).toString();
@@ -60,13 +73,20 @@ export function buildPdf(pages: PdfPage[], title = 'Comic Fast'): Uint8Array {
     const imageObj = pageObj + 2;
 
     begin(pageObj);
+    const mw = p.media?.w ?? p.ptW;
+    const mh = p.media?.h ?? p.ptH;
+    const box = (name: string, b?: [number, number, number, number]) => (b ? `/${name} [${b.map(num).join(' ')}] ` : '');
     write(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(p.ptW)} ${num(p.ptH)}] ` +
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${num(mw)} ${num(mh)}] ` +
+        box('TrimBox', p.trim) +
+        box('BleedBox', p.bleedBox) +
+        box('ArtBox', p.trim) +
         `/Resources << /XObject << /Im0 ${imageObj} 0 R >> >> /Contents ${contentObj} 0 R >>\n`
     );
     end();
 
-    const content = `q ${num(p.ptW)} 0 0 ${num(p.ptH)} 0 0 cm /Im0 Do Q\n`;
+    const im = p.image ?? { x: 0, y: 0, w: p.ptW, h: p.ptH };
+    const content = `q ${num(im.w)} 0 0 ${num(im.h)} ${num(im.x)} ${num(im.y)} cm /Im0 Do Q\n${p.marks ?? ''}`;
     begin(contentObj);
     write(`<< /Length ${content.length} >>\nstream\n${content}endstream\n`);
     end();
@@ -74,7 +94,9 @@ export function buildPdf(pages: PdfPage[], title = 'Comic Fast'): Uint8Array {
     begin(imageObj);
     write(
       `<< /Type /XObject /Subtype /Image /Width ${p.pxW} /Height ${p.pxH} ` +
-        `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`
+        (p.cmyk
+          ? `/ColorSpace /DeviceCMYK /BitsPerComponent 8 /Filter /FlateDecode /Length ${p.jpeg.length} >>\nstream\n`
+          : `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${p.jpeg.length} >>\nstream\n`)
     );
     write(p.jpeg);
     write('\nendstream\n');

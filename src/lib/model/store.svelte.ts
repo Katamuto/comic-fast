@@ -8,11 +8,12 @@
  */
 import { t } from '../i18n/index.svelte';
 import { History, type Command } from './history';
-import { newDoc, newPage, newStyle, STYLE_ID } from './defaults';
+import { newDoc, newPage, newStyle, STYLE_ID, textBox } from './defaults';
 import { reorderIds, type ReorderMode } from './order';
 import { drawOrder, reorderStyle } from './style';
 import { uid } from './ids';
-import { clamp, fitInside, outsidePage, toLocal } from './geometry';
+import { clamp, fitInside, outsidePage, scaleLayers, toLocal } from './geometry';
+import { findGutters, normalizeGutters, type Gutter, type RectLike } from './gutters';
 import { cloneWithNewIds, scalePages, usedAssetIds } from './scale';
 import {
   coverScale,
@@ -30,7 +31,20 @@ import { makeProxy, VIEW_MAX, THUMB_MAX } from '../imageedit/proxy';
 import { bytesToBlob, imageSize, mimeFromName, svgIntrinsicSize } from '../io/images';
 import { scallopPoly } from '../render/balloonShapes';
 import { applyFormat, shiftSpans, toggleFlag, type FmtKey } from '../render/richText';
-import { DEFAULT_GRID, gridStep, type GridSpec } from './grid';
+import { DEFAULT_GRID, type GridSpec } from './grid';
+import {
+  allowedRect,
+  clampPoint,
+  clampShift,
+  contentRect,
+  gridStepIn,
+  partnerIndex,
+  resolveLayout,
+  snapFrom,
+  type Layout,
+  type Rect,
+  type Side
+} from './layout';
 import { combinePanels, cutPolys, gridCuts, panelLike, panelPolyPage } from './panelOps';
 import type {
   Asset,
@@ -107,12 +121,157 @@ class Editor {
   cutMode = $state(false);
   /** Separación (unidades de página) que queda entre las dos piezas de un corte. */
   cutGap = $state(0);
+  /** Separación efectiva de un corte: la indicada o, si es 0, el canal estándar de la maquetación. */
+  get cutGapEff(): number {
+    return this.cutGap > 0 ? this.cutGap : this.layout.gutter;
+  }
   showSplit = $state(false);
   /** Última selección en un cuadro de texto (para dar formato a una parte del texto aunque el foco cambie). */
   textSel = $state<{ id: ID; from: number; to: number } | null>(null);
-  /** Paso del imán (unidades de página). */
+  /** Vista de doble página (solo en libros): la página activa junto a su vecina. */
+  spread = $state(false);
+  /** Lado que se previsualiza al editar la página de estilo de un libro. */
+  styleSide = $state<Side>('right');
+
+  // --- maquetación (márgenes, libro, rejilla) ---------------------------------
+  /** Maquetación del documento con los valores por omisión aplicados. */
+  get layout(): Layout {
+    return resolveLayout(this.doc.layout);
+  }
+  /** Lado de la página actual en el libro (en el modo estilo, el que se previsualiza). null = no es un libro. */
+  get side(): Side | null {
+    const l = this.layout;
+    if (!l.book) return null;
+    if (this.styleMode) return this.styleSide;
+    const i = this.pageIndex;
+    return (l.firstSide === 'right') === (i % 2 === 0) ? 'right' : 'left';
+  }
+  /** Índice de la página vecina en la doble página (null si no hay o no es un libro). */
+  get partner(): number | null {
+    if (this.styleMode) return null;
+    return partnerIndex(this.layout, this.pageIndex, this.doc.pages.length);
+  }
+  /** ¿Se está mostrando la doble página? */
+  get spreadOn(): boolean {
+    return this.spread && this.partner !== null;
+  }
+  /** Área dentro de márgenes de la página actual: la rejilla se ajusta a ella. */
+  get area(): Rect {
+    return contentRect(this.layout, this.doc.pageW, this.doc.pageH, this.side);
+  }
+  /** Zona donde se pueden colocar elementos, o null si no hay límite (página de estilo, o sin márgenes/restricción). */
+  get allowed(): Rect | null {
+    const l = this.layout;
+    if (this.styleMode || !l.restrict) return null;
+    const m = l.margins;
+    if (m.top + m.bottom + m.inner + m.outer <= 0) return null;
+    return allowedRect(l, this.doc.pageW, this.doc.pageH, this.pageIndex, this.doc.pages.length, this.spreadOn);
+  }
+  /** Paso del imán (unidades de página), relativo al área de márgenes. */
   get gridSize(): number {
-    return gridStep(this.doc.pageW, this.grid);
+    return gridStepIn(this.area, this.grid);
+  }
+  /** Ajusta una coordenada a la rejilla (que empieza en el margen). */
+  snapX(v: number): number {
+    return snapFrom(v, this.area.x, this.gridSize);
+  }
+  snapY(v: number): number {
+    return snapFrom(v, this.area.y, this.gridSize);
+  }
+  /** Limita un punto a la zona permitida. */
+  limitPoint(p: { x: number; y: number }): { x: number; y: number } {
+    const a = this.allowed;
+    return a ? clampPoint(p, a) : p;
+  }
+  /** Corrige un desplazamiento para que la caja siga dentro de la zona permitida. */
+  limitShift(box: Rect, dx: number, dy: number): { dx: number; dy: number } {
+    const a = this.allowed;
+    return a ? clampShift(box, dx, dy, a) : { dx, dy };
+  }
+
+  /**
+   * En la página de estilo de un libro: añade el número de página en la esquina exterior de cada
+   * página (uno solo para las izquierdas y otro para las derechas), dentro del margen inferior.
+   */
+  addPageNumbers(): void {
+    if (!this.styleMode || !this.layout.book) return;
+    const { pageW: W, pageH: H } = this.doc;
+    const l = this.layout;
+    const bw = Math.round(W * 0.12);
+    const bh = Math.round(W * 0.06);
+    const size = Math.round(bh * 0.65);
+    const band = l.margins.bottom;
+    const y = Math.round(band >= bh * 1.3 ? H - band / 2 - bh / 2 : H - bh * 1.4);
+    const mk = (x: number, align: 'left' | 'right', only: 'left' | 'right') =>
+      ({ ...textBox({ x, y, w: bw, h: bh }, { text: '{n}', fontSize: size, align }), only }) as ObjectInit;
+    const edge = Math.max(l.margins.outer, Math.round(W * 0.05));
+    this.addObjects([mk(edge, 'left', 'left'), mk(Math.round(W - edge - bw), 'right', 'right')]);
+  }
+
+  /** Tolerancia para considerar «canal» un hueco entre viñetas: el estándar ×3, con un mínimo de 60 px. */
+  get gutterReach(): number {
+    return Math.max(60, this.layout.gutter * 3);
+  }
+  /** Viñetas rectangulares sin girar ni bloquear de la página actual: las que forman canales. */
+  gutterRects(only?: ID[]): RectLike[] {
+    if (this.styleMode) return [];
+    return this.page.objects
+      .filter((o): o is PanelObj => o.type === 'panel' && o.shape === 'rect' && !o.locked && Math.abs(o.rotation % 360) < 0.01 && (!only || only.includes(o.id)))
+      .map((o) => ({ id: o.id, x: o.x, y: o.y, w: o.w, h: o.h }));
+  }
+  /** Canales de la página actual (separaciones entre viñetas rectangulares vecinas). */
+  gutters(): Gutter[] {
+    return findGutters(this.gutterRects(), { maxGap: this.gutterReach });
+  }
+  /**
+   * Iguala los canales al estándar de la maquetación (los de las viñetas seleccionadas si hay
+   * dos o más; si no, los de toda la página). Devuelve cuántas viñetas cambió.
+   */
+  normalizeGutters(): number {
+    const sel = this.selection.filter((id) => this.find(id)?.type === 'panel');
+    const rects = this.gutterRects(sel.length >= 2 ? sel : undefined);
+    const patch = normalizeGutters(rects, this.layout.gutter, { maxGap: this.gutterReach });
+    const pageId = this.page.id;
+    const changes: Change[] = [];
+    for (const [id, box] of Object.entries(patch)) {
+      const o = this.find(id);
+      if (!o || o.type !== 'panel') continue;
+      const layers = plain(o.layers) as PanelLayer[];
+      changes.push({
+        pageId,
+        id,
+        before: { x: o.x, y: o.y, w: o.w, h: o.h, layers },
+        after: { ...box, layers: scaleLayers(layers, box.w / o.w, box.h / o.h) }
+      });
+    }
+    if (changes.length === 0) return 0;
+    this.history.run(this.changeCommand(t('hist.gutters'), changes));
+    return changes.length;
+  }
+
+  /** Cambia la maquetación (un valor undefined se restablece). Los cambios seguidos se funden en un paso. */
+  setLayout(patch: Partial<Omit<Layout, 'margins'>> & { margins?: Partial<Layout['margins']> }): void {
+    const before = plain(this.doc.layout ?? {}) as Partial<Layout>;
+    const merged = { ...resolveLayout(before), ...patch, margins: { ...resolveLayout(before).margins, ...(patch.margins ?? {}) } };
+    const after = resolveLayout(merged);
+    const apply = (l: Partial<Layout> | undefined) => {
+      if (l) this.doc.layout = JSON.parse(JSON.stringify(l));
+      else delete this.doc.layout;
+    };
+    if (JSON.stringify(resolveLayout(before)) === JSON.stringify(after)) return;
+    let target: Partial<Layout> = after;
+    const cmd: Command & { target: () => Partial<Layout> } = {
+      label: t('hist.layout'),
+      mergeKey: 'layout',
+      target: () => target,
+      redo: () => apply(target),
+      undo: () => apply(Object.keys(before).length ? before : undefined),
+      merge: (next) => {
+        target = (next as Command & { target: () => Partial<Layout> }).target();
+        return true;
+      }
+    };
+    this.history.run(cmd);
   }
 
   // --- archivo -------------------------------------------------------------
@@ -128,6 +287,8 @@ class Editor {
   showAbout = $state(false);
   showSplash = $state(false);
   showPageSize = $state(false);
+  showLayout = $state(false);
+  showExport = $state(false);
   showHelp = $state(false);
   showEula = $state(false);
   showNotice = $state(false);
@@ -305,10 +466,21 @@ class Editor {
 
   addObjects(inits: ObjectInit[], select = true): PageObject[] {
     // Lo que caería por completo fuera de la página no se vería: no se crea.
-    const inside = inits.filter((i) => !outsidePage(i, this.doc.pageW, this.doc.pageH));
+    const inside = inits.filter((i) => !this.isOutside(i));
     if (inside.length < inits.length) this.status = t('status.outside');
     inits = inside;
     if (inits.length === 0) return [];
+    // Con márgenes, lo nuevo se desplaza lo justo para caer dentro del área permitida (en bloque).
+    const room = this.allowed;
+    if (room) {
+      const xs = inits.map((i) => i.x);
+      const ys = inits.map((i) => i.y);
+      const x2 = inits.map((i) => i.x + i.w);
+      const y2 = inits.map((i) => i.y + i.h);
+      const box = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...x2) - Math.min(...xs), h: Math.max(...y2) - Math.min(...ys) };
+      const { dx, dy } = clampShift(box, 0, 0, room);
+      if (dx !== 0 || dy !== 0) inits = inits.map((i) => ({ ...i, x: i.x + dx, y: i.y + dy }));
+    }
     const pageId = this.page.id;
     // En la página de estilo lo nuevo queda por encima del contenido (se puede bajar después).
     const objs = inits.map((i) => {
@@ -375,10 +547,17 @@ class Editor {
   }
 
   /** Quita (de forma deshacible) los objetos indicados que han quedado por completo fuera de la página. */
+  /** ¿Cae por completo fuera de lo visible? En doble página, «visible» es el conjunto de las dos páginas. */
+  private isOutside(o: Parameters<typeof outsidePage>[0]): boolean {
+    const { pageW: W, pageH: H } = this.doc;
+    if (!this.spreadOn) return outsidePage(o, W, H);
+    return outsidePage(o, W, H, this.side === 'left' ? 0 : -W, 2 * W);
+  }
+
   removeOutside(ids: ID[]): void {
     const out = ids.filter((id) => {
       const o = this.find(id);
-      return o && !o.locked && outsidePage(o, this.doc.pageW, this.doc.pageH);
+      return o && !o.locked && this.isOutside(o);
     });
     if (out.length === 0) return;
     this.removeObjects(out);
@@ -673,7 +852,8 @@ class Editor {
   }
 
   private panelsSelected(): PanelObj[] {
-    return this.page.objects.filter((o): o is PanelObj => o.type === 'panel' && this.selection.includes(o.id));
+    // Copias planas: los objetos del estado son proxies y structuredClone no puede copiarlos.
+    return this.page.objects.filter((o): o is PanelObj => o.type === 'panel' && this.selection.includes(o.id)).map((o) => plain(o));
   }
 
   canCombine(): boolean {
@@ -723,7 +903,7 @@ class Editor {
   cutPanels(a: Pt, b: Pt): void {
     let targets = this.panelsSelected();
     if (targets.length === 0) {
-      const all = this.page.objects.filter((o): o is PanelObj => o.type === 'panel');
+      const all = this.page.objects.filter((o): o is PanelObj => o.type === 'panel').map((o) => plain(o));
       const hit = [...all].reverse().find((p) => cutPolys([panelPolyPage(p)], a, b, 0).length >= 2);
       targets = hit ? [hit] : [];
     }
@@ -736,7 +916,7 @@ class Editor {
     for (const p of targets) this.cutPanelList([p], gridCuts(p, cols, rows), gap, true);
   }
 
-  private cutPanelList(targets: PanelObj[], lines: [Pt, Pt][], gap = this.cutGap, keepGoing = false): void {
+  private cutPanelList(targets: PanelObj[], lines: [Pt, Pt][], gap = this.cutGapEff, keepGoing = false): void {
     let done = false;
     for (const p of targets) {
       let polys = [panelPolyPage(p)];

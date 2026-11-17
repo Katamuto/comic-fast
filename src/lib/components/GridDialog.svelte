@@ -2,14 +2,15 @@
   /** Cuadrícula relativa a la página: columnas y subdivisiones. */
   import { editor } from '../model/store.svelte';
   import { t } from '../i18n/index.svelte';
-  import { clampGrid, cellSize, gridStep } from '../model/grid';
+  import { clampGrid } from '../model/grid';
+  import { gridStepIn } from '../model/layout';
   import Dialog from './Dialog.svelte';
   import NumberField from './fields/NumberField.svelte';
 
   const g = $derived(clampGrid(editor.grid));
-  const cell = $derived(Math.round(cellSize(editor.doc.pageW, g) * 10) / 10);
-  const step = $derived(Math.round(gridStep(editor.doc.pageW, g) * 10) / 10);
-  const rows = $derived(Math.round((editor.doc.pageH / cell) * 10) / 10);
+  const cell = $derived(Math.round((editor.area.w / g.cols) * 10) / 10);
+  const step = $derived(Math.round(gridStepIn(editor.area, g) * 10) / 10);
+  const rows = $derived(Math.round((editor.area.h / cell) * 10) / 10);
 
   function close() {
     editor.showGridDialog = false;

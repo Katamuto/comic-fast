@@ -31,3 +31,7 @@ Para añadir un menú a otra zona: en su componente, `oncontextmenu={(e) => { e.
 
 ## Objetos fuera de la página
 Un objeto que queda **por completo fuera** de la página (al soltarlo desde el panel de recursos, o al arrastrarlo, redimensionarlo o girarlo) se elimina, porque no se vería. Ctrl+Z lo devuelve. Basta con que asome un poco para que se conserve.
+
+## Libro, márgenes e impresión (0.15)
+
+Define márgenes, sangrado, canal y PPI en **Página → Maquetación…**. Con «Maquetar como libro» las páginas alternan izquierda/derecha; en el modo estilo, el Inspector permite mostrar un objeto solo en un lado y «Añadir número de página en la esquina exterior» crea el número de cada lado. **Archivo → Exportar para imprenta…** genera el PDF/TIFF CMYK con sangrado y marcas de corte. La conversión es sin perfil ICC: pide una prueba impresa.

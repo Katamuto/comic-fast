@@ -7,7 +7,7 @@
 
   let cols = $state(2);
   let rows = $state(1);
-  let gap = $state(Math.round(editor.doc.pageW * 0.012));
+  let gap = $state(editor.layout.gutter > 0 ? Math.round(editor.layout.gutter) : Math.round(editor.doc.pageW * 0.012));
 
   function close() {
     editor.showSplit = false;

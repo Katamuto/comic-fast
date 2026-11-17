@@ -29,3 +29,25 @@ describe('pageInfo', () => {
     expect(pageTokens('Pág. {n}/{total}', 2, 5)).toBe('Pág. 2/5');
   });
 });
+
+describe('pageSpill (arte a doble página)', () => {
+  const W = 100;
+  const obj = (id: string, x: number): never => ({ id, type: 'panel', x, y: 10, w: 60, h: 50, rotation: 0 }) as never;
+  const doc = (objs0: never[], objs1: never[]) => ({
+    pageW: W,
+    pageH: 200,
+    layout: { book: true, firstSide: 'left' as const },
+    pages: [pg('a', { objects: objs0 }), pg('b', { objects: objs1 })]
+  });
+  it('la vecina aporta lo que invade esta página', async () => {
+    const { pageSpill } = await import('./style');
+    const d = doc([obj('x', 70)], []); // página 0 (izquierda), panel de 70 a 130 invade la derecha
+    expect(pageSpill(d, 1)?.dx).toBe(-W);
+    expect(pageSpill(d, 0)).toBeNull(); // la derecha está vacía
+  });
+  it('sin invasión o sin libro no hay nada', async () => {
+    const { pageSpill } = await import('./style');
+    expect(pageSpill(doc([obj('x', 10)], []), 1)).toBeNull();
+    expect(pageSpill({ ...doc([obj('x', 70)], []), layout: {} }, 1)).toBeNull();
+  });
+});

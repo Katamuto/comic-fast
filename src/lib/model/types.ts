@@ -1,3 +1,4 @@
+import type { Layout } from './layout';
 /**
  * Modelo de datos de Comic Fast.
  *
@@ -56,6 +57,11 @@ interface Base extends Box {
    * por debajo. Ver model/style.ts.
    */
   over?: boolean;
+  /**
+   * Solo en la página de estilo de un libro: dibujar este objeto únicamente en las páginas
+   * de ese lado (p. ej. el número en la esquina exterior de cada página). Falta = en todas.
+   */
+  only?: 'left' | 'right';
   /** Bloqueado: no se mueve, redimensiona, gira ni elimina (sí se puede editar su contenido). */
   locked?: boolean;
 }
@@ -361,6 +367,8 @@ export interface ComicDoc {
   textLang?: string;
   /** Parámetros globales (ver Globals). */
   globals?: Globals;
+  /** Maquetación: PPI, márgenes, sangrado, canal y libro (ver model/layout.ts). Todo opcional. */
+  layout?: Partial<Layout>;
 }
 
 /** Datos de una imagen incrustada en el proyecto. */
