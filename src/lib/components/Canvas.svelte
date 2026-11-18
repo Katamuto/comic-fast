@@ -154,14 +154,15 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
   const gridV = $derived.by(() => {
     if (!editor.showGrid) return { x: [], y: [] };
     const a = editor.area;
-    const step = editor.gridSize;
+    const stepX = editor.gridSize;
+    const stepY = editor.gridSizeY;
     const sub = Math.max(1, editor.grid.sub);
-    const axis = (origin: number, lo: number, hi: number) => {
+    const axis = (origin: number, lo: number, hi: number, step: number) => {
       const out: { at: number; major: boolean }[] = [];
       for (let i = Math.ceil((lo - origin) / step - 1e-6); i <= Math.floor((hi - origin) / step + 1e-6); i++) out.push({ at: origin + i * step, major: ((i % sub) + sub) % sub === 0 });
       return out;
     };
-    return { x: axis(a.x, viewX, viewX + viewW), y: axis(a.y, 0, editor.doc.pageH) };
+    return { x: axis(a.x, viewX, viewX + viewW, stepX), y: axis(a.y, 0, editor.doc.pageH, stepY) };
   });
   const widthPt = $derived(single && single.type === 'balloon' && showTail ? tailWidthHandle(single) : null);
   const curvePt = $derived(single && single.type === 'balloon' && showTail ? curveHandle(single) : null);
@@ -1369,6 +1370,22 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
       {/if}
     </div>
   </div>
+  {#if editor.layout.book && !editor.styleMode}
+    <button
+      type="button"
+      class="spreadbtn"
+      class:on={editor.spreadOn}
+      disabled={editor.partner === null}
+      title={editor.partner === null ? t('spread.noPartner') : t('act.view.spread')}
+      onpointerdown={(e) => e.stopPropagation()}
+      onclick={() => {
+        editor.spread = !editor.spread;
+        setTimeout(() => editor.fitView?.(), 0);
+      }}
+    >
+      ◫ {t('act.view.spread')}
+    </button>
+  {/if}
   {#if editor.cutMode}
     <div class="cutbar" role="toolbar" aria-label={t('cut.title')} onpointerdown={(e) => e.stopPropagation()}>
       <span>{t('cut.hint')}</span>
@@ -1379,6 +1396,27 @@ import type { Box, Change, ID, PageObject, PanelLayer, Patch } from '../model/ty
 </div>
 
 <style>
+  .spreadbtn {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.8rem;
+    z-index: 15;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 0.9231rem;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  }
+  .spreadbtn.on {
+    background: var(--sel);
+    border-color: var(--sel);
+    color: #fff;
+  }
+  .spreadbtn:disabled {
+    opacity: 0.5;
+  }
   .cutbar {
     position: fixed;
     bottom: 3.2rem;

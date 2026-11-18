@@ -795,5 +795,7 @@
   "split.left": "拖动以调整页面列表宽度（双击恢复）",
   "split.right": "拖动以调整右侧面板宽度（双击恢复）",
   "status.gutters": "已统一 {n} 个分格的间距",
-  "status.guttersNone": "没有需要统一的间距（或已是标准值）"
+  "status.guttersNone": "没有需要统一的间距（或已是标准值）",
+  "grid.fit": "垂直拉伸网格以精确贴合页边距（单元格不再是正方形）",
+  "spread.noPartner": "此页没有对页（如书的第一页）：请选择其他页查看跨页"
 }

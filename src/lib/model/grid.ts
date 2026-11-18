@@ -5,13 +5,16 @@
 export interface GridSpec {
   cols: number;
   sub: number;
+  /** Estira la rejilla en vertical para que las filas encajen exactas en el área (celdas no cuadradas). */
+  fit?: boolean;
 }
 
 export const DEFAULT_GRID: GridSpec = { cols: 12, sub: 1 };
 
 export const clampGrid = (g: GridSpec): GridSpec => ({
   cols: Math.min(100, Math.max(1, Math.round(g.cols) || DEFAULT_GRID.cols)),
-  sub: Math.min(16, Math.max(1, Math.round(g.sub) || 1))
+  sub: Math.min(16, Math.max(1, Math.round(g.sub) || 1)),
+  ...(g.fit ? { fit: true } : {})
 });
 
 /** Lado de una celda principal. */

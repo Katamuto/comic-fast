@@ -795,5 +795,7 @@
   "split.left": "Arraste para mudar a largura da lista de páginas (duplo clique: restaurar)",
   "split.right": "Arraste para mudar a largura do painel direito (duplo clique: restaurar)",
   "status.gutters": "Sarjetas igualadas em {n} quadro(s)",
-  "status.guttersNone": "Não há sarjetas para igualar (ou já estão no padrão)"
+  "status.guttersNone": "Não há sarjetas para igualar (ou já estão no padrão)",
+  "grid.fit": "Esticar a grade na vertical para encaixar exatamente na margem (células não quadradas)",
+  "spread.noPartner": "Esta página não tem par (p. ex. a primeira de um livro): escolha outra para ver a página dupla"
 }

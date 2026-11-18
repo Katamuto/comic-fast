@@ -135,16 +135,24 @@ export function gridStepIn(area: Rect, g: GridSpec): number {
   return area.w / (c.cols * c.sub);
 }
 
+/** Paso vertical: igual al horizontal o, con `fit`, el que reparte el alto del área en filas exactas. */
+export function gridStepYIn(area: Rect, g: GridSpec): number {
+  const sx = gridStepIn(area, g);
+  if (!g.fit || sx <= 0) return sx;
+  return area.h / Math.max(1, Math.round(area.h / sx));
+}
+
 export function gridLinesIn(area: Rect, g: GridSpec): { x: { at: number; major: boolean }[]; y: { at: number; major: boolean }[] } {
   const { sub } = clampGrid(g);
-  const step = gridStepIn(area, g);
-  const axis = (from: number, len: number) => {
+  const stepX = gridStepIn(area, g);
+  const stepY = gridStepYIn(area, g);
+  const axis = (from: number, len: number, step: number) => {
     const out: { at: number; major: boolean }[] = [];
     const n = Math.floor(len / step + 1e-6);
     for (let i = 0; i <= n; i++) out.push({ at: from + i * step, major: i % sub === 0 });
     return out;
   };
-  return { x: axis(area.x, area.w), y: axis(area.y, area.h) };
+  return { x: axis(area.x, area.w, stepX), y: axis(area.y, area.h, stepY) };
 }
 
 /** Ajusta v a la rejilla que empieza en `origin`. */

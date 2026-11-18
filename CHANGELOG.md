@@ -1,5 +1,9 @@
 # Cambios
 
+## 0.15.1
+
+Cuadrícula estirable y botón de doble página (ver abajo).
+
 ## 0.15.0
 
 **Nuevo: maquetación profesional**
@@ -10,6 +14,8 @@
 - **Canales**: arrastrar la separación entre viñetas rectangulares redimensiona las de ambos lados a la vez (Alt: sin escalar el contenido); «Igualar canales entre viñetas» las deja al canal estándar; Dividir y Cortar usan el canal estándar por omisión.
 - **Exportar para imprenta** (Archivo → Exportar para imprenta…): PDF CMYK (TrimBox/BleedBox, marcas de corte opcionales, imagen sin pérdida) o TIFF CMYK por página (ZIP); límite de tinta total, negro con GCR y grises solo en K. PNG/PDF/CBZ respetan el PPI (el PNG lo lleva incrustado) y pueden incluir sangrado.
 - **Paneles laterales redimensionables** por el borde (también la altura del Inspector; doble clic restablece; teclado con flechas) y **Inspector rediseñado** en secciones plegables más compactas.
+
+- **Cuadrícula estirada**: opción «Estirar la cuadrícula en vertical» (Vista → Cuadrícula…) para que las filas encajen exactas en el margen aunque las celdas no sean cuadradas. Botón «Doble página» visible sobre el lienzo.
 
 **Limitaciones**
 - La conversión a CMYK es matemática, sin perfil ICC: los colores muy saturados salen más apagados y el PDF no es PDF/X certificado. Pide una prueba a la imprenta.

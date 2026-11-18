@@ -10,7 +10,7 @@
   const g = $derived(clampGrid(editor.grid));
   const cell = $derived(Math.round((editor.area.w / g.cols) * 10) / 10);
   const step = $derived(Math.round(gridStepIn(editor.area, g) * 10) / 10);
-  const rows = $derived(Math.round((editor.area.h / cell) * 10) / 10);
+  const rows = $derived(g.fit ? Math.round(editor.area.h / editor.gridSizeY) : Math.round((editor.area.h / cell) * 10) / 10);
 
   function close() {
     editor.showGridDialog = false;
@@ -25,6 +25,7 @@
     <NumberField label={t('grid.sub')} value={g.sub} min={1} onchange={(v) => (editor.grid = clampGrid({ ...g, sub: v }))} />
   </div>
   <p class="hint">{t('grid.info', { cell, rows, step })}</p>
+  <label class="chk"><input type="checkbox" checked={!!g.fit} onchange={(e) => (editor.grid = clampGrid({ ...g, fit: e.currentTarget.checked }))} /> {t('grid.fit')}</label>
   <label class="chk"><input type="checkbox" bind:checked={editor.showGrid} /> {t('act.view.grid')}</label>
   <label class="chk"><input type="checkbox" bind:checked={editor.snap} /> {t('act.view.snap')}</label>
   <div class="foot"><button type="button" onclick={close}>{t('dialog.close')}</button></div>

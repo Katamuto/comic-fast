@@ -100,3 +100,15 @@ describe('renderPlan', () => {
     expect(p.pxW * p.pxH).toBeLessThanOrEqual(120_000_000 * 1.001);
   });
 });
+
+describe('rejilla estirada (fit)', () => {
+  it('reparte el alto en filas exactas', async () => {
+    const { gridStepYIn } = await import('./layout');
+    const area = { x: 0, y: 0, w: 100, h: 155 };
+    expect(gridStepYIn(area, { cols: 10, sub: 1 })).toBe(10); // sin fit: cuadradas
+    const y = gridStepYIn(area, { cols: 10, sub: 1, fit: true });
+    expect(y).toBeCloseTo(155 / 16, 6);
+    const g = gridLinesIn(area, { cols: 10, sub: 1, fit: true });
+    expect(g.y[g.y.length - 1].at).toBeCloseTo(155, 6);
+  });
+});

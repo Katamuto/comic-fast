@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "comic-fast"
-version = "0.14.1"
+version = "0.15.1"
 dependencies = [
  "tauri",
  "tauri-build",

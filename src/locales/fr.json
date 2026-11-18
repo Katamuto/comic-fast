@@ -795,5 +795,7 @@
   "split.left": "Glissez pour changer la largeur de la liste des pages (double-clic : réinitialiser)",
   "split.right": "Glissez pour changer la largeur du panneau droit (double-clic : réinitialiser)",
   "status.gutters": "Gouttières égalisées sur {n} case(s)",
-  "status.guttersNone": "Aucune gouttière à égaliser (ou déjà à la taille standard)"
+  "status.guttersNone": "Aucune gouttière à égaliser (ou déjà à la taille standard)",
+  "grid.fit": "Étirer la grille verticalement pour épouser exactement la marge (cellules non carrées)",
+  "spread.noPartner": "Cette page n’a pas de vis-à-vis (p. ex. la première d’un livre) : choisissez-en une autre pour voir la double page"
 }

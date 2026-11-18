@@ -38,6 +38,7 @@ import {
   clampShift,
   contentRect,
   gridStepIn,
+  gridStepYIn,
   partnerIndex,
   resolveLayout,
   snapFrom,
@@ -175,8 +176,12 @@ class Editor {
   snapX(v: number): number {
     return snapFrom(v, this.area.x, this.gridSize);
   }
+  /** Paso vertical de la rejilla (puede diferir del horizontal con «ajustar al margen»). */
+  get gridSizeY(): number {
+    return gridStepYIn(this.area, this.grid);
+  }
   snapY(v: number): number {
-    return snapFrom(v, this.area.y, this.gridSize);
+    return snapFrom(v, this.area.y, this.gridSizeY);
   }
   /** Limita un punto a la zona permitida. */
   limitPoint(p: { x: number; y: number }): { x: number; y: number } {

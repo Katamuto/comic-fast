@@ -795,5 +795,7 @@
   "split.left": "Drag to change the page list width (double-click: reset)",
   "split.right": "Drag to change the right panel width (double-click: reset)",
   "status.gutters": "Gutters equalized on {n} panel(s)",
-  "status.guttersNone": "No gutters to equalize (or they already match the standard)"
+  "status.guttersNone": "No gutters to equalize (or they already match the standard)",
+  "grid.fit": "Stretch the grid vertically to fit the margin exactly (non-square cells)",
+  "spread.noPartner": "This page has no partner (e.g. the first page of a book): pick another to see the spread"
 }

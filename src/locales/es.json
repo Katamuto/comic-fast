@@ -795,5 +795,7 @@
   "split.left": "Arrastra para cambiar el ancho de la lista de páginas (doble clic: restablecer)",
   "split.right": "Arrastra para cambiar el ancho del panel derecho (doble clic: restablecer)",
   "status.gutters": "Canales igualados en {n} viñeta(s)",
-  "status.guttersNone": "No hay canales que igualar (o ya están al tamaño estándar)"
+  "status.guttersNone": "No hay canales que igualar (o ya están al tamaño estándar)",
+  "grid.fit": "Estirar la cuadrícula en vertical para encajar exacta en el margen (celdas no cuadradas)",
+  "spread.noPartner": "Esta página no tiene pareja (p. ej. la primera de un libro): elige otra para ver la doble página"
 }
