@@ -12,5 +12,23 @@
         "dragDropEnabled": true
       }
     ]
+  },
+  "bundle": {
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/share/mime/packages/comicfast.xml": "linux/comicfast-mime.xml",
+          "/usr/share/icons/hicolor/256x256/mimetypes/application-x-comicfast.png": "icons/file/cfast-256.png",
+          "/usr/share/icons/hicolor/512x512/mimetypes/application-x-comicfast.png": "icons/file/cfast-512.png"
+        }
+      },
+      "rpm": {
+        "files": {
+          "/usr/share/mime/packages/comicfast.xml": "linux/comicfast-mime.xml",
+          "/usr/share/icons/hicolor/256x256/mimetypes/application-x-comicfast.png": "icons/file/cfast-256.png",
+          "/usr/share/icons/hicolor/512x512/mimetypes/application-x-comicfast.png": "icons/file/cfast-512.png"
+        }
+      }
+    }
   }
 }

@@ -1,5 +1,13 @@
 # Cambios
 
+## 0.15.3
+
+- Icono de la app renovado (explosión «CF») en escritorio (Windows/macOS/Linux), favicon, PWA e icono de iOS.
+
+## 0.15.2
+
+- Los archivos `.cfast` se asocian con la app en el instalador y llevan el icono oficial (Windows, macOS y paquetes deb/rpm de Linux).
+
 ## 0.15.1
 
 Cuadrícula estirable y botón de doble página (ver abajo).

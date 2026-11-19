@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Se fusiona con el Info.plist que genera Tauri: fija el icono de los .cfast -->
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Proyecto de Comic Fast</string>
+      <key>CFBundleTypeExtensions</key>
+      <array><string>cfast</string></array>
+      <key>CFBundleTypeIconFile</key>
+      <string>cfast.icns</string>
+      <key>CFBundleTypeRole</key>
+      <string>Editor</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+    </dict>
+  </array>
+</dict>
+</plist>
